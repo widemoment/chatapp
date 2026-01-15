@@ -8,30 +8,23 @@ const wss = new WebSocketServer({ server });
 
 app.use(express.static("public"));
 
-const rooms = new Map();
+const clients = new Set();
 
-function roomSet(name) {
-  if (!rooms.has(name)) rooms.set(name, new Set());
-  return rooms.get(name);
+function cleanName(v) {
+  const s = String(v ?? "").trim();
+  return (s || "anon").slice(0, 24);
 }
 
-function broadcast(room, payload) {
-  const set = rooms.get(room);
-  if (!set) return;
+function broadcast(payload) {
   const data = JSON.stringify(payload);
-  for (const ws of set) {
+  for (const ws of clients) {
     if (ws.readyState === 1) ws.send(data);
   }
 }
 
-function clean(v, max, fallback) {
-  const s = String(v ?? "").trim();
-  return (s || fallback).slice(0, max);
-}
-
 wss.on("connection", (ws) => {
-  ws.user = { name: "anon", room: "lobby" };
-  roomSet("lobby").add(ws);
+  clients.add(ws);
+  ws.name = "anon";
 
   ws.send(JSON.stringify({ type: "system", text: "connected" }));
 
@@ -43,19 +36,10 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    if (msg.type === "join") {
-      const name = clean(msg.name, 24, "anon");
-      const room = clean(msg.room, 24, "lobby");
-
-      roomSet(ws.user.room).delete(ws);
-
-      ws.user.name = name;
-      ws.user.room = room;
-
-      roomSet(room).add(ws);
-
-      ws.send(JSON.stringify({ type: "system", text: `joined ${room} as ${name}` }));
-      broadcast(room, { type: "system", text: `${name} joined` });
+    if (msg.type === "hello") {
+      ws.name = cleanName(msg.name);
+      ws.send(JSON.stringify({ type: "system", text: `you are ${ws.name}` }));
+      broadcast({ type: "system", text: `${ws.name} joined` });
       return;
     }
 
@@ -63,9 +47,9 @@ wss.on("connection", (ws) => {
       const text = String(msg.text ?? "").trim();
       if (!text) return;
 
-      broadcast(ws.user.room, {
+      broadcast({
         type: "chat",
-        name: ws.user.name,
+        name: ws.name || "anon",
         text,
         ts: Date.now()
       });
@@ -73,9 +57,8 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    const { name, room } = ws.user;
-    roomSet(room).delete(ws);
-    broadcast(room, { type: "system", text: `${name} left` });
+    clients.delete(ws);
+    if (ws.name) broadcast({ type: "system", text: `${ws.name} left` });
   });
 });
 
