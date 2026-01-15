@@ -7,16 +7,70 @@ const sendBtn = document.getElementById("send");
 
 function line(t) {
   log.textContent += t + "\n";
-  window.scrollTo(0, document.body.scrollHeight);
 }
 
 const proto = location.protocol === "https:" ? "wss" : "ws";
 const ws = new WebSocket(`${proto}://${location.host}`);
 
 let nameSet = false;
+let pendingHello = null;
 
-ws.addEventListener("open", () => line("connected"));
-ws.addEventListener("close", () => line("disconnected"));
+function safeSend(obj) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+    return true;
+  }
+  return false;
+}
+
+function hello() {
+  const name = (nameInput.value || "").trim() || "anon";
+  const ok = safeSend({ type: "hello", name });
+
+  if (!ok) {
+    pendingHello = name;
+    line("[system] still connecting... try again in a sec");
+    return;
+  }
+
+  nameSet = true;
+  textInput.focus();
+}
+
+function send() {
+  const t = (textInput.value || "").trim();
+  if (!t) return;
+
+  if (!nameSet) hello();
+  if (!nameSet) return;
+
+  const ok = safeSend({ type: "chat", text: t });
+  if (!ok) {
+    line("[system] not connected");
+    return;
+  }
+
+  textInput.value = "";
+  textInput.focus();
+}
+
+ws.addEventListener("open", () => {
+  line("connected");
+  setNameBtn.disabled = false;
+  sendBtn.disabled = false;
+
+  if (pendingHello) {
+    safeSend({ type: "hello", name: pendingHello });
+    nameSet = true;
+    pendingHello = null;
+  }
+});
+
+ws.addEventListener("close", () => {
+  line("disconnected");
+  setNameBtn.disabled = true;
+  sendBtn.disabled = true;
+});
 
 ws.addEventListener("message", (e) => {
   let m;
@@ -33,23 +87,8 @@ ws.addEventListener("message", (e) => {
   }
 });
 
-function hello() {
-  const name = (nameInput.value || "").trim();
-  ws.send(JSON.stringify({ type: "hello", name }));
-  nameSet = true;
-  textInput.focus();
-}
-
-function send() {
-  const t = (textInput.value || "").trim();
-  if (!t) return;
-
-  if (!nameSet) hello();
-
-  ws.send(JSON.stringify({ type: "chat", text: t }));
-  textInput.value = "";
-  textInput.focus();
-}
+setNameBtn.disabled = true;
+sendBtn.disabled = true;
 
 setNameBtn.addEventListener("click", hello);
 sendBtn.addEventListener("click", send);
