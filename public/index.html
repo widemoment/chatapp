@@ -4,26 +4,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chat</title>
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <h3>Chat</h3>
+    <main class="wrap">
+      <h1>Chat</h1>
 
-    <div>
-      <label>
-        Name
-        <input id="name" placeholder="name" />
-      </label>
-      <button id="setName">Enter</button>
-    </div>
+      <section class="card">
+        <div class="row">
+          <label class="label">
+            Name
+            <input id="name" placeholder="name" autocomplete="nickname" />
+          </label>
+          <button id="setName">Enter</button>
+        </div>
 
-    <hr />
+        <div id="replyBar" class="replybar hidden">
+          <div class="replytext" id="replyText"></div>
+          <button id="cancelReply" class="linkbtn">Cancel</button>
+        </div>
 
-    <pre id="log"></pre>
+        <div id="feed" class="feed" aria-live="polite"></div>
 
-    <div>
-      <input id="text" placeholder="message" />
-      <button id="send">Send</button>
-    </div>
+        <div class="row">
+          <input id="text" placeholder="message" autocomplete="off" />
+          <button id="send">Send</button>
+        </div>
+      </section>
+    </main>
 
     <script src="/app.js"></script>
   </body>
