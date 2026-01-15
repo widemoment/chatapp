@@ -1,6 +1,7 @@
 import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
+import crypto from "crypto";
 
 const app = express();
 const server = http.createServer(app);
@@ -10,9 +11,19 @@ app.use(express.static("public"));
 
 const clients = new Set();
 
-function cleanName(v) {
-  const s = String(v ?? "").trim();
-  return (s || "anon").slice(0, 24);
+const TTL_MS = 60 * 60 * 1000;
+
+let messages = [];
+
+function now() {
+  return Date.now();
+}
+
+function cleanup() {
+  const cutoff = now() - TTL_MS;
+  if (messages.length && messages[0].ts < cutoff) {
+    messages = messages.filter(m => m.ts >= cutoff);
+  }
 }
 
 function broadcast(payload) {
@@ -22,11 +33,26 @@ function broadcast(payload) {
   }
 }
 
+function cleanName(v) {
+  const s = String(v ?? "").trim();
+  return (s || "anon").slice(0, 24);
+}
+
+function cleanText(v, max) {
+  const s = String(v ?? "");
+  return s.trim().slice(0, max);
+}
+
+setInterval(cleanup, 15 * 1000);
+
 wss.on("connection", (ws) => {
   clients.add(ws);
   ws.name = "anon";
 
+  cleanup();
+
   ws.send(JSON.stringify({ type: "system", text: "connected" }));
+  ws.send(JSON.stringify({ type: "history", messages }));
 
   ws.on("message", (raw) => {
     let msg;
@@ -44,15 +70,25 @@ wss.on("connection", (ws) => {
     }
 
     if (msg.type === "chat") {
-      const text = String(msg.text ?? "").trim();
+      cleanup();
+
+      const text = cleanText(msg.text, 500);
       if (!text) return;
 
-      broadcast({
-        type: "chat",
+      const replyTo = typeof msg.replyTo === "string" ? msg.replyTo.slice(0, 64) : null;
+
+      const item = {
+        id: crypto.randomUUID(),
         name: ws.name || "anon",
         text,
-        ts: Date.now()
-      });
+        replyTo,
+        ts: now()
+      };
+
+      messages.push(item);
+
+      broadcast({ type: "chat", message: item });
+      return;
     }
   });
 
