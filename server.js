@@ -22,31 +22,19 @@ const MOD_EMAILS = (process.env.MOD_EMAILS || "")
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
 
-const online = new Map(); // ws -> { id, name, role, country, token }
+const online = new Map();
 let peakOnline = 0;
 
-function clean(v, max) {
-  return String(v ?? "").trim().slice(0, max);
-}
-function cleanEmail(v) {
-  return clean(v, 120).toLowerCase();
-}
+function clean(v, max) { return String(v ?? "").trim().slice(0, max); }
+function cleanEmail(v) { return clean(v, 120).toLowerCase(); }
 function cleanCountry(v) {
   const s = clean(v, 3).toLowerCase();
   return /^[a-z0-9]{2,3}$/.test(s) ? s : "xx";
 }
-function okEmail(e) {
-  return e.includes("@") && e.includes(".") && e.length >= 6;
-}
-function okPassword(p) {
-  return typeof p === "string" && p.length >= 8;
-}
-function isOwner(u) {
-  return u?.role === "owner";
-}
-function isMod(u) {
-  return u?.role === "moderator" || u?.role === "owner";
-}
+function okEmail(e) { return e.includes("@") && e.includes(".") && e.length >= 6; }
+function okPassword(p) { return typeof p === "string" && p.length >= 8; }
+function isOwner(u) { return u?.role === "owner"; }
+function isMod(u) { return u?.role === "moderator" || u?.role === "owner"; }
 
 async function runSchema() {
   const sql = `
@@ -60,7 +48,8 @@ async function runSchema() {
     username_changed_at TIMESTAMPTZ,
     muted_until TIMESTAMPTZ,
     banned_until TIMESTAMPTZ,
-    country_code TEXT NOT NULL DEFAULT 'xx'
+    country_code TEXT NOT NULL DEFAULT 'xx',
+    dm_pub_jwk TEXT
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -83,23 +72,17 @@ async function runSchema() {
   CREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen);
   `;
   await pool.query(sql);
-
-  await pool.query(
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'"
-  );
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS dm_pub_jwk TEXT");
 }
 
 async function cleanupOldMessages() {
   await pool.query("DELETE FROM messages WHERE ts < NOW() - INTERVAL '1 hour'");
 }
-setInterval(() => {
-  cleanupOldMessages().catch(() => {});
-}, 15000);
+setInterval(() => { cleanupOldMessages().catch(() => {}); }, 15000);
 
 async function ensureRolesFromEnv() {
-  if (OWNER_EMAIL) {
-    await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
-  }
+  if (OWNER_EMAIL) await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
   for (const em of MOD_EMAILS) {
     await pool.query("UPDATE users SET role='moderator' WHERE email=$1 AND role <> 'owner'", [em]);
   }
@@ -110,7 +93,7 @@ async function getUserByToken(token) {
   if (!t) return null;
 
   const q = await pool.query(
-    `SELECT u.id, u.email, u.name, u.role, u.muted_until, u.banned_until, u.country_code
+    `SELECT u.id, u.email, u.name, u.role, u.muted_until, u.banned_until, u.country_code, u.dm_pub_jwk
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token = $1`,
@@ -124,9 +107,7 @@ async function getUserByToken(token) {
 
 function snapshotOnline() {
   const list = [];
-  for (const v of online.values()) {
-    list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
-  }
+  for (const v of online.values()) list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
   list.sort((a, b) => a.name.localeCompare(b.name));
   const current = list.length;
   if (current > peakOnline) peakOnline = current;
@@ -135,9 +116,7 @@ function snapshotOnline() {
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
-  for (const ws of online.keys()) {
-    if (ws.readyState === 1) ws.send(data);
-  }
+  for (const ws of online.keys()) if (ws.readyState === 1) ws.send(data);
 }
 
 function pushOnline() {
@@ -197,7 +176,7 @@ app.post("/api/login", async (req, res) => {
     await ensureRolesFromEnv();
 
     const uQ = await pool.query(
-      "SELECT id, email, name, role, pass_hash, banned_until, country_code FROM users WHERE id=$1",
+      "SELECT id, email, name, role, pass_hash, banned_until, country_code, dm_pub_jwk FROM users WHERE id=$1",
       [q.rows[0].id]
     );
     const u = uQ.rows[0];
@@ -252,6 +231,42 @@ app.get("/api/me", async (req, res) => {
       banned_until: u.banned_until
     }
   });
+});
+
+//e2ee key storage 
+
+app.post("/api/dmkey", async (req, res) => {
+  try {
+    const token = clean(req.body?.token, 200);
+    const pub = clean(req.body?.pub, 5000);
+
+    const u = await getUserByToken(token);
+    if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
+    if (!pub) return res.status(400).json({ ok: false, error: "bad_key" });
+
+    await pool.query("UPDATE users SET dm_pub_jwk=$1 WHERE id=$2", [pub, u.id]);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ ok: false, error: "server_error" });
+  }
+});
+
+app.get("/api/dmkey/:id", async (req, res) => {
+  try {
+    const token = clean(req.headers["x-token"], 200);
+    const u = await getUserByToken(token);
+    if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ ok: false });
+
+    const q = await pool.query("SELECT dm_pub_jwk FROM users WHERE id=$1", [id]);
+    if (!q.rows.length) return res.status(404).json({ ok: false });
+
+    res.json({ ok: true, pub: q.rows[0].dm_pub_jwk || "" });
+  } catch {
+    res.status(500).json({ ok: false, error: "server_error" });
+  }
 });
 
 app.post("/api/account/name", async (req, res) => {
@@ -357,7 +372,6 @@ app.post("/api/admin/ban", async (req, res) => {
     [String(minutes), targetId]
   );
   await pool.query("DELETE FROM sessions WHERE user_id=$1", [targetId]);
-
   res.json({ ok: true });
 });
 
@@ -415,10 +429,7 @@ wss.on("connection", (ws) => {
     if (msg.type === "auth") {
       const token = clean(msg.token, 200);
       const u = await getUserByToken(token);
-      if (!u) {
-        ws.send(JSON.stringify({ type: "auth_error", text: "bad token" }));
-        return;
-      }
+      if (!u) { ws.send(JSON.stringify({ type: "auth_error", text: "bad token" })); return; }
 
       await ensureRolesFromEnv();
 
@@ -509,11 +520,15 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    if (msg.type === "dm") {
+    if (msg.type === "dm_e2ee") {
       const toId = Number(msg.toId);
-      const text = clean(msg.text, 500);
+      const payload = msg.payload;
+
       if (!Number.isFinite(toId) || toId <= 0) return;
-      if (!text) return;
+      if (!payload || typeof payload !== "object") return;
+
+      const packed = JSON.stringify(payload);
+      if (packed.length > 8000) return;
 
       const qBan = await pool.query("SELECT banned_until FROM users WHERE id=$1", [ws.user.id]);
       const bannedUntil = qBan.rows[0]?.banned_until ? new Date(qBan.rows[0].banned_until) : null;
@@ -522,7 +537,7 @@ wss.on("connection", (ws) => {
       const id = crypto.randomUUID();
       await pool.query(
         "INSERT INTO messages (id, kind, from_user_id, to_user_id, text) VALUES ($1, 'dm', $2, $3, $4)",
-        [id, ws.user.id, toId, text]
+        [id, ws.user.id, toId, packed]
       );
 
       const item = {
@@ -533,12 +548,12 @@ wss.on("connection", (ws) => {
         fromRole: ws.user.role,
         fromCountry: ws.user.country,
         toId,
-        text
+        payload
       };
 
       for (const [sock, info] of online.entries()) {
         if (info.id === toId || info.id === ws.user.id) {
-          if (sock.readyState === 1) sock.send(JSON.stringify({ type: "dm", message: item }));
+          if (sock.readyState === 1) sock.send(JSON.stringify({ type: "dm_e2ee", message: item }));
         }
       }
     }
@@ -564,4 +579,3 @@ main().catch((err) => {
   console.error("Startup failed:", err);
   process.exit(1);
 });
-
