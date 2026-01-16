@@ -7,6 +7,7 @@ const email = $("email");
 const password = $("password");
 const nameRow = $("nameRow");
 const name = $("name");
+const country = $("country");
 const authMsg = $("authMsg");
 
 const loginBtn = $("login");
@@ -34,6 +35,8 @@ const onlineList = $("onlineList");
 const accountBox = $("account");
 const newName = $("newName");
 const changeName = $("changeName");
+const newCountry = $("newCountry");
+const changeCountry = $("changeCountry");
 const curPass = $("curPass");
 const newPass = $("newPass");
 const changePass = $("changePass");
@@ -51,9 +54,11 @@ function setMode(m) {
   authMsg.textContent = "";
   if (mode === "signup") {
     nameRow.classList.remove("hidden");
+    $("countryRow").classList.remove("hidden");
     toggleBtn.textContent = "Switch to Login";
   } else {
     nameRow.classList.add("hidden");
+    $("countryRow").classList.add("hidden");
     toggleBtn.textContent = "Switch to Sign up";
   }
 }
@@ -70,10 +75,44 @@ function showApp() {
   appBox.classList.remove("hidden");
 }
 
-function addLine(s) {
+function roleClass(role) {
+  if (role === "owner") return "role-owner";
+  if (role === "moderator") return "role-moderator";
+  return "role-enthusiast";
+}
+
+function makeNameLine({ name, id, role, country }) {
+  const wrap = document.createElement("span");
+  wrap.className = "nameLine";
+
+  const img = document.createElement("img");
+  img.className = "flag";
+  img.alt = country || "xx";
+  img.src = `/flags/${(country || "xx").toLowerCase()}.gif`;
+
+  const n = document.createElement("span");
+  n.textContent = `${name} (#${id})`;
+
+  const r = document.createElement("span");
+  r.className = `roleTag ${roleClass(role)}`;
+  r.textContent = role;
+
+  wrap.appendChild(img);
+  wrap.appendChild(n);
+  wrap.appendChild(r);
+  return wrap;
+}
+
+function addLine(parts) {
   const div = document.createElement("div");
   div.className = "msg";
-  div.textContent = s;
+
+  if (typeof parts === "string") {
+    div.textContent = parts;
+  } else {
+    for (const p of parts) div.appendChild(p);
+  }
+
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
 }
@@ -117,7 +156,12 @@ loginBtn.onclick = async () => {
 
 signupBtn.onclick = async () => {
   authMsg.textContent = "";
-  const out = await api("/api/signup", "POST", { email: email.value, password: password.value, name: name.value });
+  const out = await api("/api/signup", "POST", {
+    email: email.value,
+    password: password.value,
+    name: name.value,
+    country: country.value
+  });
   if (!out.ok) { authMsg.textContent = out.error || "signup failed"; return; }
   authMsg.textContent = "Account created. Now switch to Login and login.";
 };
@@ -136,6 +180,14 @@ changeName.onclick = async () => {
   const out = await api("/api/account/name", "POST", { token, name: newName.value });
   if (!out.ok) { accountMsg.textContent = out.error || "failed"; return; }
   accountMsg.textContent = "name updated";
+  await boot(true);
+};
+
+changeCountry.onclick = async () => {
+  accountMsg.textContent = "";
+  const out = await api("/api/account/country", "POST", { token, country: newCountry.value });
+  if (!out.ok) { accountMsg.textContent = out.error || "failed"; return; }
+  accountMsg.textContent = "country updated";
   await boot(true);
 };
 
@@ -165,10 +217,12 @@ function wsConnect() {
 
     if (m.type === "auth_ok") {
       me = m.me;
-      meLine.textContent = `You: ${me.name} (#${me.id}) role=${me.role}`;
+      meLine.textContent = "";
+      meLine.appendChild(makeNameLine({ name: me.name, id: me.id, role: me.role, country: me.country }));
       if (me.role === "owner" || me.role === "moderator") adminLink.classList.remove("hidden");
       else adminLink.classList.add("hidden");
       showApp();
+      newCountry.value = me.country || "";
       return;
     }
 
@@ -185,7 +239,7 @@ function wsConnect() {
         const b = document.createElement("button");
         b.className = "itemBtn";
         b.type = "button";
-        b.textContent = `${u.name} (#${u.id})`;
+        b.appendChild(makeNameLine(u));
         b.onclick = () => { dmTo.value = String(u.id); setView("dm"); text.focus(); };
         onlineList.appendChild(b);
       }
@@ -195,7 +249,23 @@ function wsConnect() {
     if (m.type === "history") {
       feed.textContent = "";
       for (const item of m.messages) {
-        addLine(`[${new Date(item.ts).toLocaleTimeString()}] ${item.name} (#${item.userId}): ${item.text}`);
+        const time = document.createElement("span");
+        time.textContent = `[${new Date(item.ts).toLocaleTimeString()}] `;
+
+        const nameLine = makeNameLine({
+          name: item.name,
+          id: item.userId,
+          role: item.role || "enthusiast",
+          country: item.country || "xx"
+        });
+
+        const sep = document.createElement("span");
+        sep.textContent = ": ";
+
+        const txt = document.createElement("span");
+        txt.textContent = item.text;
+
+        addLine([time, nameLine, sep, txt]);
       }
       return;
     }
@@ -207,13 +277,47 @@ function wsConnect() {
 
     if (m.type === "chat") {
       const msg = m.message;
-      addLine(`[${new Date(msg.ts).toLocaleTimeString()}] ${msg.name} (#${msg.userId}): ${msg.text}`);
+
+      const time = document.createElement("span");
+      time.textContent = `[${new Date(msg.ts).toLocaleTimeString()}] `;
+
+      const nameLine = makeNameLine({
+        name: msg.name,
+        id: msg.userId,
+        role: msg.role || "enthusiast",
+        country: msg.country || "xx"
+      });
+
+      const sep = document.createElement("span");
+      sep.textContent = ": ";
+
+      const txt = document.createElement("span");
+      txt.textContent = msg.text;
+
+      addLine([time, nameLine, sep, txt]);
       return;
     }
 
     if (m.type === "dm") {
       const msg = m.message;
-      addLine(`[DM ${new Date(msg.ts).toLocaleTimeString()}] ${msg.from} (#${msg.fromId}) -> #${msg.toId}: ${msg.text}`);
+
+      const time = document.createElement("span");
+      time.textContent = `[DM ${new Date(msg.ts).toLocaleTimeString()}] `;
+
+      const fromLine = makeNameLine({
+        name: msg.from,
+        id: msg.fromId,
+        role: msg.fromRole || "enthusiast",
+        country: msg.fromCountry || "xx"
+      });
+
+      const arrow = document.createElement("span");
+      arrow.textContent = " -> #" + msg.toId + ": ";
+
+      const txt = document.createElement("span");
+      txt.textContent = msg.text;
+
+      addLine([time, fromLine, arrow, txt]);
     }
   };
 }
