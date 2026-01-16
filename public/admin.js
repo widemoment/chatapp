@@ -6,7 +6,7 @@ const token = localStorage.getItem("token") || "";
 
 async function getUsers() {
   const res = await fetch("/api/admin/users", { headers: { "X-Token": token } });
-  return res.json().catch(() => ({ ok: false }));
+  return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
 async function post(path, body) {
@@ -15,16 +15,32 @@ async function post(path, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, ...body })
   });
-  return res.json().catch(() => ({ ok: false }));
+  return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
-function row(u) {
-  const muted = u.muted_until ? new Date(u.muted_until).toLocaleString() : "-";
-  const banned = u.banned_until ? new Date(u.banned_until).toLocaleString() : "-";
+function fmt(ts) {
+  if (!ts) return "-";
+  try { return new Date(ts).toLocaleString(); } catch { return String(ts); }
+}
 
+function makeInput(ph) {
+  const i = document.createElement("input");
+  i.placeholder = ph;
+  i.style.flex = "0 0 170px";
+  return i;
+}
+
+function makeBtn(text, onClick) {
+  const b = document.createElement("button");
+  b.textContent = text;
+  b.onclick = onClick;
+  return b;
+}
+
+function row(u, meRole) {
   const div = document.createElement("div");
   div.className = "msg";
-  div.textContent = `#${u.id} ${u.name} (${u.email}) role=${u.role} muted=${muted} banned=${banned}`;
+  div.textContent = `#${u.id} ${u.name} (${u.email}) role=${u.role} muted=${fmt(u.muted_until)} banned=${fmt(u.banned_until)}`;
 
   const controls = document.createElement("div");
   controls.style.display = "flex";
@@ -32,34 +48,44 @@ function row(u) {
   controls.style.marginTop = "6px";
   controls.style.flexWrap = "wrap";
 
-  const muteMin = document.createElement("input");
-  muteMin.placeholder = "mute minutes";
-  muteMin.style.flex = "0 0 160px";
-
-  const banMin = document.createElement("input");
-  banMin.placeholder = "ban minutes";
-  banMin.style.flex = "0 0 160px";
-
-  const muteBtn = document.createElement("button");
-  muteBtn.textContent = "Mute";
-  muteBtn.onclick = async () => {
-    const minutes = Number(muteMin.value);
-    const out = await post("/api/admin/mute", { userId: u.id, minutes });
-    msg.textContent = out.ok ? "muted" : "failed";
-  };
-
-  const banBtn = document.createElement("button");
-  banBtn.textContent = "Ban";
-  banBtn.onclick = async () => {
-    const minutes = Number(banMin.value);
-    const out = await post("/api/admin/ban", { userId: u.id, minutes });
-    msg.textContent = out.ok ? "banned" : "failed";
-  };
+  const muteMin = makeInput("mute minutes");
+  const banMin = makeInput("ban minutes");
 
   controls.appendChild(muteMin);
-  controls.appendChild(muteBtn);
+  controls.appendChild(makeBtn("Mute", async () => {
+    const minutes = Number(muteMin.value);
+    const out = await post("/api/admin/mute", { userId: u.id, minutes });
+    msg.textContent = out.ok ? `Muted #${u.id}` : (out.error || "failed");
+  }));
+
+  controls.appendChild(makeBtn("Unmute", async () => {
+    const out = await post("/api/admin/unmute", { userId: u.id });
+    msg.textContent = out.ok ? `Unmuted #${u.id}` : (out.error || "failed");
+  }));
+
   controls.appendChild(banMin);
-  controls.appendChild(banBtn);
+  controls.appendChild(makeBtn("Ban", async () => {
+    const minutes = Number(banMin.value);
+    const out = await post("/api/admin/ban", { userId: u.id, minutes });
+    msg.textContent = out.ok ? `Banned #${u.id}` : (out.error || "failed");
+  }));
+
+  controls.appendChild(makeBtn("Unban", async () => {
+    const out = await post("/api/admin/unban", { userId: u.id });
+    msg.textContent = out.ok ? `Unbanned #${u.id}` : (out.error || "failed");
+  }));
+
+  if (meRole === "owner") {
+    controls.appendChild(makeBtn("Set Moderator", async () => {
+      const out = await post("/api/admin/role", { userId: u.id, role: "moderator" });
+      msg.textContent = out.ok ? `#${u.id} is moderator` : (out.error || "failed");
+    }));
+
+    controls.appendChild(makeBtn("Remove Moderator", async () => {
+      const out = await post("/api/admin/role", { userId: u.id, role: "enthusiast" });
+      msg.textContent = out.ok ? `#${u.id} is enthusiast` : (out.error || "failed");
+    }));
+  }
 
   div.appendChild(controls);
   return div;
@@ -68,12 +94,15 @@ function row(u) {
 async function load() {
   msg.textContent = "";
   table.textContent = "";
+
   const out = await getUsers();
   if (!out.ok) {
-    msg.textContent = "not allowed or not logged in";
+    msg.textContent = out.error || "not allowed or not logged in";
     return;
   }
-  for (const u of out.users) table.appendChild(row(u));
+
+  msg.textContent = `Loaded. Your role: ${out.meRole}`;
+  for (const u of out.users) table.appendChild(row(u, out.meRole));
 }
 
 refresh.onclick = load;
