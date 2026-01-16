@@ -1,109 +1,146 @@
-const table = document.getElementById("table");
-const msg = document.getElementById("msg");
-const refresh = document.getElementById("refresh");
+const list = document.getElementById("list");
+const status = document.getElementById("status");
+const refreshBtn = document.getElementById("refresh");
 
 const token = localStorage.getItem("token") || "";
 
-async function getUsers() {
-  const res = await fetch("/api/admin/users", { headers: { "X-Token": token } });
-  return res.json().catch(() => ({ ok: false, error: "network" }));
+function roleClass(role) {
+  if (role === "owner") return "role-owner";
+  if (role === "moderator") return "role-moderator";
+  return "role-enthusiast";
 }
 
-async function post(path, body) {
+async function api(path, method, body) {
   const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, ...body })
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Token": token
+    },
+    body: body ? JSON.stringify(body) : undefined
   });
   return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
-function fmt(ts) {
-  if (!ts) return "-";
-  try { return new Date(ts).toLocaleString(); } catch { return String(ts); }
-}
+function row(user, meRole) {
+  const box = document.createElement("div");
+  box.className = "userRow";
 
-function makeInput(ph) {
-  const i = document.createElement("input");
-  i.placeholder = ph;
-  i.style.flex = "0 0 170px";
-  return i;
-}
+  const title = document.createElement("div");
+  title.innerHTML = `
+    <strong>#${user.id}</strong>
+    ${user.name}
+    <span class="${roleClass(user.role)}">(${user.role})</span>
+    <span class="small">${user.email}</span>
+    <span class="small">flag: ${user.country_code || "xx"}</span>
+    <span class="small">muted: ${user.muted_until || "--"}</span>
+    <span class="small">banned: ${user.banned_until || "--"}</span>
+  `;
 
-function makeBtn(text, onClick) {
-  const b = document.createElement("button");
-  b.textContent = text;
-  b.onclick = onClick;
-  return b;
-}
-
-function row(u, meRole) {
-  const div = document.createElement("div");
-  div.className = "msg";
-  div.textContent = `#${u.id} ${u.name} (${u.email}) role=${u.role} muted=${fmt(u.muted_until)} banned=${fmt(u.banned_until)}`;
+  box.appendChild(title);
 
   const controls = document.createElement("div");
-  controls.style.display = "flex";
-  controls.style.gap = "8px";
-  controls.style.marginTop = "6px";
-  controls.style.flexWrap = "wrap";
+  controls.className = "row";
 
-  const muteMin = makeInput("mute minutes");
-  const banMin = makeInput("ban minutes");
+  const muteInput = document.createElement("input");
+  muteInput.placeholder = "mute minutes";
+  muteInput.style.width = "120px";
 
-  controls.appendChild(muteMin);
-  controls.appendChild(makeBtn("Mute", async () => {
-    const minutes = Number(muteMin.value);
-    const out = await post("/api/admin/mute", { userId: u.id, minutes });
-    msg.textContent = out.ok ? `Muted #${u.id}` : (out.error || "failed");
-  }));
+  const muteBtn = document.createElement("button");
+  muteBtn.textContent = "Mute";
 
-  controls.appendChild(makeBtn("Unmute", async () => {
-    const out = await post("/api/admin/unmute", { userId: u.id });
-    msg.textContent = out.ok ? `Unmuted #${u.id}` : (out.error || "failed");
-  }));
+  const unmuteBtn = document.createElement("button");
+  unmuteBtn.textContent = "Unmute";
 
-  controls.appendChild(banMin);
-  controls.appendChild(makeBtn("Ban", async () => {
-    const minutes = Number(banMin.value);
-    const out = await post("/api/admin/ban", { userId: u.id, minutes });
-    msg.textContent = out.ok ? `Banned #${u.id}` : (out.error || "failed");
-  }));
+  const banInput = document.createElement("input");
+  banInput.placeholder = "ban minutes";
+  banInput.style.width = "120px";
 
-  controls.appendChild(makeBtn("Unban", async () => {
-    const out = await post("/api/admin/unban", { userId: u.id });
-    msg.textContent = out.ok ? `Unbanned #${u.id}` : (out.error || "failed");
-  }));
+  const banBtn = document.createElement("button");
+  banBtn.textContent = "Ban";
 
-  if (meRole === "owner") {
-    controls.appendChild(makeBtn("Set Moderator", async () => {
-      const out = await post("/api/admin/role", { userId: u.id, role: "moderator" });
-      msg.textContent = out.ok ? `#${u.id} is moderator` : (out.error || "failed");
-    }));
+  const unbanBtn = document.createElement("button");
+  unbanBtn.textContent = "Unban";
 
-    controls.appendChild(makeBtn("Remove Moderator", async () => {
-      const out = await post("/api/admin/role", { userId: u.id, role: "enthusiast" });
-      msg.textContent = out.ok ? `#${u.id} is enthusiast` : (out.error || "failed");
-    }));
-  }
+  const roleBtn = document.createElement("button");
+  roleBtn.textContent = user.role === "moderator" ? "Remove Moderator" : "Set Moderator";
 
-  div.appendChild(controls);
-  return div;
+  const flagInput = document.createElement("input");
+  flagInput.placeholder = "flag (ro, nl, jp...)";
+  flagInput.style.width = "140px";
+
+  const flagBtn = document.createElement("button");
+  flagBtn.textContent = "Set Flag";
+
+  muteBtn.onclick = async () => {
+    const minutes = Number(muteInput.value);
+    if (!Number.isFinite(minutes)) return alert("Enter mute minutes");
+    await api("/api/admin/mute", "POST", { token, userId: user.id, minutes });
+    load();
+  };
+
+  unmuteBtn.onclick = async () => {
+    await api("/api/admin/unmute", "POST", { token, userId: user.id });
+    load();
+  };
+
+  banBtn.onclick = async () => {
+    const minutes = Number(banInput.value);
+    if (!Number.isFinite(minutes)) return alert("Enter ban minutes");
+    await api("/api/admin/ban", "POST", { token, userId: user.id, minutes });
+    load();
+  };
+
+  unbanBtn.onclick = async () => {
+    await api("/api/admin/unban", "POST", { token, userId: user.id });
+    load();
+  };
+
+  roleBtn.onclick = async () => {
+    if (meRole !== "owner") return alert("Only owner can change roles");
+    const newRole = user.role === "moderator" ? "enthusiast" : "moderator";
+    await api("/api/admin/role", "POST", { token, userId: user.id, role: newRole });
+    load();
+  };
+
+  flagBtn.onclick = async () => {
+    const code = (flagInput.value || "").trim().toLowerCase();
+    if (!code) return alert("Enter country code like ro, nl, jp");
+    await api("/api/admin/country", "POST", { token, userId: user.id, country: code });
+    load();
+  };
+
+  controls.appendChild(muteInput);
+  controls.appendChild(muteBtn);
+  controls.appendChild(unmuteBtn);
+  controls.appendChild(banInput);
+  controls.appendChild(banBtn);
+  controls.appendChild(unbanBtn);
+  controls.appendChild(roleBtn);
+  controls.appendChild(flagInput);
+  controls.appendChild(flagBtn);
+
+  box.appendChild(controls);
+
+  return box;
 }
 
 async function load() {
-  msg.textContent = "";
-  table.textContent = "";
+  status.textContent = "Loading...";
+  list.textContent = "";
 
-  const out = await getUsers();
+  const out = await api("/api/admin/users", "GET");
   if (!out.ok) {
-    msg.textContent = out.error || "not allowed or not logged in";
+    status.textContent = "Not allowed or not logged in";
     return;
   }
 
-  msg.textContent = `Loaded. Your role: ${out.meRole}`;
-  for (const u of out.users) table.appendChild(row(u, out.meRole));
+  status.textContent = `Loaded. Your role: ${out.meRole}`;
+
+  for (const u of out.users) {
+    list.appendChild(row(u, out.meRole));
+  }
 }
 
-refresh.onclick = load;
+refreshBtn.onclick = load;
 load();
