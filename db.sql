@@ -26,5 +26,5 @@ CREATE TABLE IF NOT EXISTS messages (
   ts TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_messages_ts ON messages(ts);
 CREATE INDEX IF NOT EXISTS idx_messages_kind_ts ON messages(kind, ts);
+CREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen);
