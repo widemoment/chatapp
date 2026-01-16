@@ -39,6 +39,8 @@ const newPass = $("newPass");
 const changePass = $("changePass");
 const accountMsg = $("accountMsg");
 
+const hint = $("hint");
+
 let mode = "signup";
 let view = "general";
 let token = localStorage.getItem("token") || null;
@@ -78,14 +80,17 @@ function addLine(s) {
 
 function setView(v) {
   view = v;
-  accountBox.classList.add("hidden");
   if (view === "general") dmToRow.classList.add("hidden");
   if (view === "dm") dmToRow.classList.remove("hidden");
+  hint.textContent = view === "dm"
+    ? "Tip: click a user on the right (online list) to autofill DM target."
+    : "";
 }
 generalBtn.onclick = () => setView("general");
 dmBtn.onclick = () => setView("dm");
-accountBtn.onclick = () => accountBox.classList.toggle("hidden");
 setView("general");
+
+accountBtn.onclick = () => accountBox.classList.toggle("hidden");
 
 async function api(path, method, body) {
   const res = await fetch(path, {
@@ -93,26 +98,28 @@ async function api(path, method, body) {
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined
   });
-  return res.json().catch(() => ({ ok: false }));
+  return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
 async function apiAuth(path) {
   const res = await fetch(path, { headers: { "X-Token": token || "" } });
-  return res.json().catch(() => ({ ok: false }));
+  return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
 loginBtn.onclick = async () => {
+  authMsg.textContent = "";
   const out = await api("/api/login", "POST", { email: email.value, password: password.value });
   if (!out.ok) { authMsg.textContent = out.error || "login failed"; return; }
   token = out.token;
   localStorage.setItem("token", token);
-  await boot();
+  await boot(false);
 };
 
 signupBtn.onclick = async () => {
+  authMsg.textContent = "";
   const out = await api("/api/signup", "POST", { email: email.value, password: password.value, name: name.value });
   if (!out.ok) { authMsg.textContent = out.error || "signup failed"; return; }
-  authMsg.textContent = "created. now login.";
+  authMsg.textContent = "Account created. Now switch to Login and login.";
 };
 
 logoutBtn.onclick = async () => {
@@ -120,6 +127,7 @@ logoutBtn.onclick = async () => {
   localStorage.removeItem("token");
   token = null;
   me = null;
+  feed.textContent = "";
   showAuth();
 };
 
@@ -144,7 +152,7 @@ const proto = location.protocol === "https:" ? "wss" : "ws";
 let ws = null;
 
 function wsConnect() {
-  if (ws) try { ws.close(); } catch {}
+  if (ws) { try { ws.close(); } catch {} }
   ws = new WebSocket(`${proto}://${location.host}`);
 
   ws.onopen = () => {
@@ -165,8 +173,8 @@ function wsConnect() {
     }
 
     if (m.type === "auth_error") {
-      showAuth();
       authMsg.textContent = m.text || "auth error";
+      showAuth();
       return;
     }
 
@@ -218,7 +226,10 @@ sendBtn.onclick = () => {
     ws.send(JSON.stringify({ type: "chat", text: t }));
   } else {
     const toId = Number((dmTo.value || "").trim());
-    if (!Number.isFinite(toId) || toId <= 0) { addLine("[system] enter a valid user id"); return; }
+    if (!Number.isFinite(toId) || toId <= 0) {
+      addLine("[system] enter a valid user id (number)");
+      return;
+    }
     ws.send(JSON.stringify({ type: "dm", toId, text: t }));
   }
 
@@ -232,10 +243,8 @@ text.addEventListener("keydown", (e) => {
 
 async function boot(keepFeed) {
   if (!token) { showAuth(); return; }
-
   const out = await apiAuth("/api/me");
   if (!out.ok) { showAuth(); return; }
-
   if (!keepFeed) feed.textContent = "";
   wsConnect();
 }
