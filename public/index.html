@@ -10,67 +10,70 @@
     <main class="wrap">
       <h1>Chat</h1>
 
-      <section class="card" id="authBox">
+      <section class="card" id="auth">
         <div class="row">
-          <label class="label">
-            Email
-            <input id="email" placeholder="email" autocomplete="email" />
-          </label>
+          <input id="email" placeholder="email" />
         </div>
-
         <div class="row">
-          <label class="label">
-            Password
-            <input id="password" placeholder="password" type="password" autocomplete="current-password" />
-          </label>
+          <input id="password" type="password" placeholder="password (8+ chars)" />
         </div>
-
         <div class="row" id="nameRow">
-          <label class="label">
-            Name
-            <input id="name" placeholder="display name" autocomplete="nickname" />
-          </label>
+          <input id="name" placeholder="username (signup only)" />
         </div>
-
         <div class="row">
-          <button id="loginBtn">Login</button>
-          <button id="signupBtn">Sign up</button>
-          <button id="toggleModeBtn">Switch to Login</button>
+          <button id="login">Login</button>
+          <button id="signup">Sign up</button>
+          <button id="toggle">Switch to Login</button>
         </div>
-
         <div class="small" id="authMsg"></div>
       </section>
 
-      <section class="card hidden" id="chatBox">
-        <div class="topbar">
-          <div>
-            <div class="small" id="meLine"></div>
-            <div class="small" id="onlineLine"></div>
+      <section class="card hidden" id="app">
+        <div class="top">
+          <div class="small" id="me"></div>
+          <div class="row">
+            <button id="generalBtn">General</button>
+            <button id="dmBtn">DMs</button>
+            <button id="accountBtn">Account</button>
+            <a id="adminLink" class="small hidden" href="/admin.html">Admin</a>
+            <button id="logout">Logout</button>
           </div>
-          <button id="logoutBtn">Logout</button>
-        </div>
-
-        <div class="tabs">
-          <button id="tabGeneral">General</button>
-          <button id="tabDMs">DMs</button>
         </div>
 
         <div class="layout">
-          <div class="feed" id="feed"></div>
-          <div class="side">
-            <div class="sideTitle">Online now</div>
-            <div class="small" id="onlineCount"></div>
-            <div id="onlineNames" class="names"></div>
+          <div>
+            <div id="feed" class="feed"></div>
+            <div id="dmToRow" class="row hidden">
+              <input id="dmTo" placeholder="DM to user id (e.g. 3)" />
+            </div>
+            <div class="row">
+              <input id="text" placeholder="message" />
+              <button id="send">Send</button>
+            </div>
           </div>
+
+          <aside class="side">
+            <div class="sideTitle">Online</div>
+            <div class="small" id="onlineStats"></div>
+            <div id="onlineList" class="list"></div>
+          </aside>
         </div>
 
-        <div id="dmBar" class="row hidden">
-          <input id="dmTo" placeholder="dm to (name)" />
-        </div>
-
-        <div class="row">
-          <input id="text" placeholder="message" />
-          <button id="send">Send</button>
+        <div id="account" class="card2 hidden">
+          <div class="sideTitle">Account</div>
+          <div class="small">Username can be changed once per 30 days.</div>
+          <div class="row">
+            <input id="newName" placeholder="new username" />
+            <button id="changeName">Change name</button>
+          </div>
+          <div class="row">
+            <input id="curPass" type="password" placeholder="current password" />
+          </div>
+          <div class="row">
+            <input id="newPass" type="password" placeholder="new password (8+ chars)" />
+            <button id="changePass">Change password</button>
+          </div>
+          <div class="small" id="accountMsg"></div>
         </div>
       </section>
 
