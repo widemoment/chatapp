@@ -25,16 +25,28 @@ const MOD_EMAILS = (process.env.MOD_EMAILS || "")
 const online = new Map(); // ws -> { id, name, role, country, token }
 let peakOnline = 0;
 
-function clean(v, max) { return String(v ?? "").trim().slice(0, max); }
-function cleanEmail(v) { return clean(v, 120).toLowerCase(); }
+function clean(v, max) {
+  return String(v ?? "").trim().slice(0, max);
+}
+function cleanEmail(v) {
+  return clean(v, 120).toLowerCase();
+}
 function cleanCountry(v) {
   const s = clean(v, 3).toLowerCase();
   return /^[a-z0-9]{2,3}$/.test(s) ? s : "xx";
 }
-function okEmail(e) { return e.includes("@") && e.includes(".") && e.length >= 6; }
-function okPassword(p) { return typeof p === "string" && p.length >= 8; }
-function isOwner(u) { return u?.role === "owner"; }
-function isMod(u) { return u?.role === "moderator" || u?.role === "owner"; }
+function okEmail(e) {
+  return e.includes("@") && e.includes(".") && e.length >= 6;
+}
+function okPassword(p) {
+  return typeof p === "string" && p.length >= 8;
+}
+function isOwner(u) {
+  return u?.role === "owner";
+}
+function isMod(u) {
+  return u?.role === "moderator" || u?.role === "owner";
+}
 
 async function runSchema() {
   const sql = `
@@ -71,16 +83,23 @@ async function runSchema() {
   CREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen);
   `;
   await pool.query(sql);
-  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'");
+
+  await pool.query(
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'"
+  );
 }
 
 async function cleanupOldMessages() {
   await pool.query("DELETE FROM messages WHERE ts < NOW() - INTERVAL '1 hour'");
 }
-setInterval(() => { cleanupOldMessages().catch(() => {}); }, 15000);
+setInterval(() => {
+  cleanupOldMessages().catch(() => {});
+}, 15000);
 
 async function ensureRolesFromEnv() {
-  if (OWNER_EMAIL) await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
+  if (OWNER_EMAIL) {
+    await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
+  }
   for (const em of MOD_EMAILS) {
     await pool.query("UPDATE users SET role='moderator' WHERE email=$1 AND role <> 'owner'", [em]);
   }
@@ -105,7 +124,9 @@ async function getUserByToken(token) {
 
 function snapshotOnline() {
   const list = [];
-  for (const v of online.values()) list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
+  for (const v of online.values()) {
+    list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
+  }
   list.sort((a, b) => a.name.localeCompare(b.name));
   const current = list.length;
   if (current > peakOnline) peakOnline = current;
@@ -114,9 +135,14 @@ function snapshotOnline() {
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
-  for (const ws of online.keys()) if (ws.readyState === 1) ws.send(data);
+  for (const ws of online.keys()) {
+    if (ws.readyState === 1) ws.send(data);
+  }
 }
-function pushOnline() { broadcast({ type: "online", ...snapshotOnline() }); }
+
+function pushOnline() {
+  broadcast({ type: "online", ...snapshotOnline() });
+}
 
 function requireModApi(u, res) {
   if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
@@ -124,7 +150,7 @@ function requireModApi(u, res) {
   return null;
 }
 
-/* ---------- AUTH ---------- */
+/* ---------------- AUTH ---------------- */
 
 app.post("/api/signup", async (req, res) => {
   try {
@@ -147,7 +173,11 @@ app.post("/api/signup", async (req, res) => {
     );
 
     await ensureRolesFromEnv();
-    const q2 = await pool.query("SELECT id, email, name, role, country_code FROM users WHERE id=$1", [q.rows[0].id]);
+    const q2 = await pool.query(
+      "SELECT id, email, name, role, country_code FROM users WHERE id=$1",
+      [q.rows[0].id]
+    );
+
     res.json({ ok: true, user: q2.rows[0] });
   } catch (e) {
     if (String(e?.message || "").toLowerCase().includes("duplicate")) {
@@ -226,7 +256,7 @@ app.get("/api/me", async (req, res) => {
   });
 });
 
-/* ---------- ACCOUNT ---------- */
+/* ---------------- ACCOUNT ---------------- */
 
 app.post("/api/account/name", async (req, res) => {
   const token = clean(req.body?.token, 200);
@@ -271,7 +301,7 @@ app.post("/api/account/password", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- ADMIN ---------- */
+/* ---------------- ADMIN ---------------- */
 
 app.get("/api/admin/users", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
@@ -333,6 +363,7 @@ app.post("/api/admin/ban", async (req, res) => {
     [String(minutes), targetId]
   );
   await pool.query("DELETE FROM sessions WHERE user_id=$1", [targetId]);
+
   res.json({ ok: true });
 });
 
@@ -364,7 +395,23 @@ app.post("/api/admin/role", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- WEBSOCKET ---------- */
+/* NEW: set country/flag for a user (mod+owner) */
+app.post("/api/admin/country", async (req, res) => {
+  const token = clean(req.body?.token, 200);
+  const targetId = Number(req.body?.userId);
+  const country = cleanCountry(req.body?.country);
+
+  const u = await getUserByToken(token);
+  const err = requireModApi(u, res);
+  if (err) return;
+
+  if (!Number.isFinite(targetId) || targetId <= 0) return res.status(400).json({ ok: false });
+
+  await pool.query("UPDATE users SET country_code=$1 WHERE id=$2", [country, targetId]);
+  res.json({ ok: true });
+});
+
+/* ---------------- WEBSOCKET ---------------- */
 
 wss.on("connection", (ws) => {
   ws.user = null;
@@ -377,7 +424,10 @@ wss.on("connection", (ws) => {
     if (msg.type === "auth") {
       const token = clean(msg.token, 200);
       const u = await getUserByToken(token);
-      if (!u) { ws.send(JSON.stringify({ type: "auth_error", text: "bad token" })); return; }
+      if (!u) {
+        ws.send(JSON.stringify({ type: "auth_error", text: "bad token" }));
+        return;
+      }
 
       await ensureRolesFromEnv();
 
