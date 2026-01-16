@@ -24,9 +24,7 @@ const MOD_EMAILS = (process.env.MOD_EMAILS || "")
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
 
-const TTL_MS = 60 * 60 * 1000;
-
-const online = new Map(); // ws -> { id, name, role, token }
+const online = new Map(); // ws -> { id, name, role, country, token }
 let peakOnline = 0;
 
 function clean(v, max) {
@@ -34,6 +32,10 @@ function clean(v, max) {
 }
 function cleanEmail(v) {
   return clean(v, 120).toLowerCase();
+}
+function cleanCountry(v) {
+  const s = clean(v, 3).toLowerCase();
+  return /^[a-z0-9]{2,3}$/.test(s) ? s : "xx";
 }
 function okEmail(e) {
   return e.includes("@") && e.includes(".") && e.length >= 6;
@@ -59,7 +61,8 @@ async function runSchema() {
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     username_changed_at TIMESTAMPTZ,
     muted_until TIMESTAMPTZ,
-    banned_until TIMESTAMPTZ
+    banned_until TIMESTAMPTZ,
+    country_code TEXT NOT NULL DEFAULT 'xx'
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -82,12 +85,15 @@ async function runSchema() {
   CREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen);
   `;
   await pool.query(sql);
+
+  await pool.query(
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'"
+  );
 }
 
 async function cleanupOldMessages() {
   await pool.query("DELETE FROM messages WHERE ts < NOW() - INTERVAL '1 hour'");
 }
-
 setInterval(() => {
   cleanupOldMessages().catch(() => {});
 }, 15000);
@@ -106,7 +112,7 @@ async function getUserByToken(token) {
   if (!t) return null;
 
   const q = await pool.query(
-    `SELECT u.id, u.email, u.name, u.role, u.muted_until, u.banned_until
+    `SELECT u.id, u.email, u.name, u.role, u.muted_until, u.banned_until, u.country_code
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token = $1`,
@@ -120,7 +126,9 @@ async function getUserByToken(token) {
 
 function snapshotOnline() {
   const list = [];
-  for (const v of online.values()) list.push({ id: v.id, name: v.name, role: v.role });
+  for (const v of online.values()) {
+    list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
+  }
   list.sort((a, b) => a.name.localeCompare(b.name));
   const current = list.length;
   if (current > peakOnline) peakOnline = current;
@@ -149,6 +157,7 @@ app.post("/api/signup", async (req, res) => {
     const email = cleanEmail(req.body?.email);
     const name = clean(req.body?.name, 24);
     const password = String(req.body?.password ?? "");
+    const country = cleanCountry(req.body?.country);
 
     if (!okEmail(email)) return res.status(400).json({ ok: false, error: "invalid_email" });
     if (!name) return res.status(400).json({ ok: false, error: "invalid_name" });
@@ -157,15 +166,14 @@ app.post("/api/signup", async (req, res) => {
     const passHash = bcrypt.hashSync(password, 10);
 
     const q = await pool.query(
-      `INSERT INTO users (email, name, pass_hash)
-       VALUES ($1, $2, $3)
+      `INSERT INTO users (email, name, pass_hash, country_code)
+       VALUES ($1, $2, $3, $4)
        RETURNING id`,
-      [email, name, passHash]
+      [email, name, passHash, country]
     );
 
     await ensureRolesFromEnv();
-    const q2 = await pool.query("SELECT id, email, name, role FROM users WHERE id=$1", [q.rows[0].id]);
-
+    const q2 = await pool.query("SELECT id, email, name, role, country_code FROM users WHERE id=$1", [q.rows[0].id]);
     res.json({ ok: true, user: q2.rows[0] });
   } catch (e) {
     if (String(e?.message || "").toLowerCase().includes("duplicate")) {
@@ -181,15 +189,18 @@ app.post("/api/login", async (req, res) => {
     const password = String(req.body?.password ?? "");
 
     const q = await pool.query(
-      "SELECT id, email, name, role, pass_hash, banned_until FROM users WHERE email=$1",
+      "SELECT id FROM users WHERE email=$1",
       [email]
     );
     if (!q.rows.length) return res.status(401).json({ ok: false, error: "bad_login" });
 
     await ensureRolesFromEnv();
 
-    const u2 = await pool.query("SELECT id, email, name, role, pass_hash, banned_until FROM users WHERE id=$1", [q.rows[0].id]);
-    const u = u2.rows[0];
+    const uQ = await pool.query(
+      "SELECT id, email, name, role, pass_hash, banned_until, country_code FROM users WHERE id=$1",
+      [q.rows[0].id]
+    );
+    const u = uQ.rows[0];
 
     const bannedUntil = u.banned_until ? new Date(u.banned_until) : null;
     if (bannedUntil && bannedUntil > new Date()) {
@@ -203,7 +214,11 @@ app.post("/api/login", async (req, res) => {
     const token = crypto.randomBytes(24).toString("hex");
     await pool.query("INSERT INTO sessions (token, user_id) VALUES ($1, $2)", [token, u.id]);
 
-    res.json({ ok: true, token, user: { id: u.id, email: u.email, name: u.name, role: u.role } });
+    res.json({
+      ok: true,
+      token,
+      user: { id: u.id, email: u.email, name: u.name, role: u.role, country: u.country_code }
+    });
   } catch {
     res.status(500).json({ ok: false, error: "server_error" });
   }
@@ -227,6 +242,7 @@ app.get("/api/me", async (req, res) => {
       email: u.email,
       name: u.name,
       role: u.role,
+      country: u.country_code,
       muted_until: u.muted_until,
       banned_until: u.banned_until
     }
@@ -276,6 +292,17 @@ app.post("/api/account/password", async (req, res) => {
   res.json({ ok: true });
 });
 
+app.post("/api/account/country", async (req, res) => {
+  const token = clean(req.body?.token, 200);
+  const country = cleanCountry(req.body?.country);
+
+  const u = await getUserByToken(token);
+  if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
+
+  await pool.query("UPDATE users SET country_code=$1 WHERE id=$2", [country, u.id]);
+  res.json({ ok: true });
+});
+
 app.get("/api/admin/users", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
   const u = await getUserByToken(token);
@@ -283,7 +310,7 @@ app.get("/api/admin/users", async (req, res) => {
   if (err) return;
 
   const q = await pool.query(
-    "SELECT id, email, name, role, created_at, muted_until, banned_until FROM users ORDER BY id ASC"
+    "SELECT id, email, name, role, country_code, created_at, muted_until, banned_until FROM users ORDER BY id ASC"
   );
   res.json({ ok: true, meRole: u.role, users: q.rows });
 });
@@ -304,7 +331,6 @@ app.post("/api/admin/mute", async (req, res) => {
     "UPDATE users SET muted_until = NOW() + ($1 || ' minutes')::interval WHERE id=$2",
     [String(minutes), targetId]
   );
-
   res.json({ ok: true });
 });
 
@@ -337,7 +363,6 @@ app.post("/api/admin/ban", async (req, res) => {
     [String(minutes), targetId]
   );
   await pool.query("DELETE FROM sessions WHERE user_id=$1", [targetId]);
-
   res.json({ ok: true });
 });
 
@@ -371,7 +396,6 @@ app.post("/api/admin/role", async (req, res) => {
 
 wss.on("connection", (ws) => {
   ws.user = null;
-
   ws.send(JSON.stringify({ type: "system", text: "connected" }));
 
   ws.on("message", async (raw) => {
@@ -388,7 +412,10 @@ wss.on("connection", (ws) => {
 
       await ensureRolesFromEnv();
 
-      const qU = await pool.query("SELECT id, name, role, muted_until, banned_until FROM users WHERE id=$1", [u.id]);
+      const qU = await pool.query(
+        "SELECT id, name, role, country_code, banned_until FROM users WHERE id=$1",
+        [u.id]
+      );
       const row = qU.rows[0];
 
       const bannedUntil = row.banned_until ? new Date(row.banned_until) : null;
@@ -397,22 +424,25 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      ws.user = { id: row.id, name: row.name, role: row.role, token };
+      ws.user = { id: row.id, name: row.name, role: row.role, country: row.country_code, token };
       online.set(ws, ws.user);
-
       if (online.size > peakOnline) peakOnline = online.size;
 
       await cleanupOldMessages();
 
       const hist = await pool.query(
-        `SELECT m.id, m.text, m.ts, u.name, u.id AS user_id
+        `SELECT m.id, m.text, m.ts, u.name, u.id AS user_id, u.role, u.country_code
          FROM messages m
          JOIN users u ON u.id=m.from_user_id
          WHERE m.kind='general'
          ORDER BY m.ts ASC`
       );
 
-      ws.send(JSON.stringify({ type: "auth_ok", me: { id: row.id, name: row.name, role: row.role } }));
+      ws.send(JSON.stringify({
+        type: "auth_ok",
+        me: { id: row.id, name: row.name, role: row.role, country: row.country_code }
+      }));
+
       ws.send(JSON.stringify({
         type: "history",
         messages: hist.rows.map(r => ({
@@ -420,12 +450,13 @@ wss.on("connection", (ws) => {
           ts: r.ts,
           name: r.name,
           userId: r.user_id,
+          role: r.role,
+          country: r.country_code,
           text: r.text
         }))
       }));
 
       pushOnline();
-      ws.send(JSON.stringify({ type: "online", ...snapshotOnline() }));
       broadcast({ type: "system", text: `${row.name} joined` });
       return;
     }
@@ -436,7 +467,7 @@ wss.on("connection", (ws) => {
       const text = clean(msg.text, 500);
       if (!text) return;
 
-      const q = await pool.query("SELECT muted_until, banned_until, name FROM users WHERE id=$1", [ws.user.id]);
+      const q = await pool.query("SELECT muted_until, banned_until FROM users WHERE id=$1", [ws.user.id]);
       const mutedUntil = q.rows[0]?.muted_until ? new Date(q.rows[0].muted_until) : null;
       const bannedUntil = q.rows[0]?.banned_until ? new Date(q.rows[0].banned_until) : null;
 
@@ -455,7 +486,15 @@ wss.on("connection", (ws) => {
 
       broadcast({
         type: "chat",
-        message: { id, ts: new Date().toISOString(), name: ws.user.name, userId: ws.user.id, text }
+        message: {
+          id,
+          ts: new Date().toISOString(),
+          name: ws.user.name,
+          userId: ws.user.id,
+          role: ws.user.role,
+          country: ws.user.country,
+          text
+        }
       });
       return;
     }
@@ -481,6 +520,8 @@ wss.on("connection", (ws) => {
         ts: new Date().toISOString(),
         fromId: ws.user.id,
         from: ws.user.name,
+        fromRole: ws.user.role,
+        fromCountry: ws.user.country,
         toId,
         text
       };
@@ -495,10 +536,8 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (online.has(ws)) {
-      const left = online.get(ws);
       online.delete(ws);
       pushOnline();
-      broadcast({ type: "system", text: `${left.name} left` });
     }
   });
 });
