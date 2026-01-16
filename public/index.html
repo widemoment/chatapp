@@ -10,29 +10,71 @@
     <main class="wrap">
       <h1>Chat</h1>
 
-      <section class="card">
+      <section class="card" id="authBox">
         <div class="row">
           <label class="label">
-            Name
-            <input id="name" placeholder="name" autocomplete="nickname" />
+            Email
+            <input id="email" placeholder="email" autocomplete="email" />
           </label>
-          <button id="setName">Enter</button>
         </div>
-
-        <div id="replyBar" class="replybar hidden">
-          <div class="replytext" id="replyText"></div>
-          <button id="cancelReply" class="linkbtn">Cancel</button>
-        </div>
-
-        <div id="feed" class="feed" aria-live="polite"></div>
 
         <div class="row">
-          <input id="text" placeholder="message" autocomplete="off" />
+          <label class="label">
+            Password
+            <input id="password" placeholder="password" type="password" autocomplete="current-password" />
+          </label>
+        </div>
+
+        <div class="row" id="nameRow">
+          <label class="label">
+            Name
+            <input id="name" placeholder="display name" autocomplete="nickname" />
+          </label>
+        </div>
+
+        <div class="row">
+          <button id="loginBtn">Login</button>
+          <button id="signupBtn">Sign up</button>
+          <button id="toggleModeBtn">Switch to Login</button>
+        </div>
+
+        <div class="small" id="authMsg"></div>
+      </section>
+
+      <section class="card hidden" id="chatBox">
+        <div class="topbar">
+          <div>
+            <div class="small" id="meLine"></div>
+            <div class="small" id="onlineLine"></div>
+          </div>
+          <button id="logoutBtn">Logout</button>
+        </div>
+
+        <div class="tabs">
+          <button id="tabGeneral">General</button>
+          <button id="tabDMs">DMs</button>
+        </div>
+
+        <div class="layout">
+          <div class="feed" id="feed"></div>
+          <div class="side">
+            <div class="sideTitle">Online now</div>
+            <div class="small" id="onlineCount"></div>
+            <div id="onlineNames" class="names"></div>
+          </div>
+        </div>
+
+        <div id="dmBar" class="row hidden">
+          <input id="dmTo" placeholder="dm to (name)" />
+        </div>
+
+        <div class="row">
+          <input id="text" placeholder="message" />
           <button id="send">Send</button>
         </div>
       </section>
-    </main>
 
-    <script src="/app.js"></script>
+      <script src="/app.js"></script>
+    </main>
   </body>
 </html>
