@@ -1,1 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>Admin</h1>
 
+      <section class="card">
+        <div class="row">
+          <a href="/">Back</a>
+          <button id="refresh">Refresh</button>
+        </div>
+        <div class="small" id="msg"></div>
+        <div id="table" class="feed"></div>
+      </section>
+
+      <script src="/admin.js"></script>
+    </main>
+  </body>
+</html>
