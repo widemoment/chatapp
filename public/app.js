@@ -1,197 +1,193 @@
-const feed = document.getElementById("feed");
-const nameInput = document.getElementById("name");
-const textInput = document.getElementById("text");
+const authBox = document.getElementById("authBox");
+const chatBox = document.getElementById("chatBox");
 
-const setNameBtn = document.getElementById("setName");
+const emailInput = document.getElementById("email");
+const passInput = document.getElementById("password");
+const nameInput = document.getElementById("name");
+const nameRow = document.getElementById("nameRow");
+
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
+const toggleModeBtn = document.getElementById("toggleModeBtn");
+const authMsg = document.getElementById("authMsg");
+
+const logoutBtn = document.getElementById("logoutBtn");
+
+const tabGeneral = document.getElementById("tabGeneral");
+const tabDMs = document.getElementById("tabDMs");
+const dmBar = document.getElementById("dmBar");
+const dmToInput = document.getElementById("dmTo");
+
+const feed = document.getElementById("feed");
+const textInput = document.getElementById("text");
 const sendBtn = document.getElementById("send");
 
-const replyBar = document.getElementById("replyBar");
-const replyText = document.getElementById("replyText");
-const cancelReplyBtn = document.getElementById("cancelReply");
+const meLine = document.getElementById("meLine");
+const onlineLine = document.getElementById("onlineLine");
+const onlineCount = document.getElementById("onlineCount");
+const onlineNames = document.getElementById("onlineNames");
 
 const proto = location.protocol === "https:" ? "wss" : "ws";
 const ws = new WebSocket(`${proto}://${location.host}`);
 
-let nameSet = false;
-let pendingHello = null;
+let mode = "login";     // login | signup
+let view = "general";   // general | dm
+let me = null;
 
-let replyingTo = null;
-const byId = new Map();
-
-function safeSend(obj) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(obj));
-    return true;
+function setAuthMode(next) {
+  mode = next;
+  if (mode === "signup") {
+    nameRow.classList.remove("hidden");
+    toggleModeBtn.textContent = "Switch to Login";
+  } else {
+    nameRow.classList.add("hidden");
+    toggleModeBtn.textContent = "Switch to Sign up";
   }
-  return false;
+  authMsg.textContent = "";
 }
 
-function fmtTime(ts) {
-  try { return new Date(ts).toLocaleTimeString(); } catch { return ""; }
-}
+setAuthMode("signup");
 
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[c]));
-}
+toggleModeBtn.addEventListener("click", () => {
+  setAuthMode(mode === "signup" ? "login" : "signup");
+});
 
-function showReplyBar(message) {
-  replyingTo = message ? message.id : null;
-
-  if (!message) {
-    replyBar.classList.add("hidden");
-    replyText.textContent = "";
-    return;
-  }
-
-  replyBar.classList.remove("hidden");
-  replyText.textContent = `Replying to ${message.name}: ${message.text.slice(0, 80)}${message.text.length > 80 ? "…" : ""}`;
-}
-
-cancelReplyBtn.addEventListener("click", () => showReplyBar(null));
-
-function renderMessage(m) {
-  byId.set(m.id, m);
-
+function addLine(text) {
   const div = document.createElement("div");
   div.className = "msg";
-  div.dataset.id = m.id;
-
-  const meta = document.createElement("div");
-  meta.className = "meta";
-
-  const name = document.createElement("div");
-  name.className = "name";
-  name.textContent = m.name;
-
-  const time = document.createElement("div");
-  time.className = "time";
-  time.textContent = fmtTime(m.ts);
-
-  meta.appendChild(name);
-  meta.appendChild(time);
-
-  const body = document.createElement("div");
-  body.className = "body";
-
-  if (m.replyTo && byId.has(m.replyTo)) {
-    const original = byId.get(m.replyTo);
-    const r = document.createElement("div");
-    r.className = "reply";
-    r.innerHTML = `<div><b>${esc(original.name)}</b>: ${esc(original.text.slice(0, 120))}${original.text.length > 120 ? "…" : ""}</div>`;
-    body.appendChild(r);
-  }
-
-  const text = document.createElement("div");
-  text.textContent = m.text;
-  body.appendChild(text);
-
-  const actions = document.createElement("div");
-  actions.className = "actions";
-
-  const replyBtn = document.createElement("button");
-  replyBtn.type = "button";
-  replyBtn.textContent = "Reply";
-  replyBtn.addEventListener("click", () => {
-    showReplyBar(m);
-    textInput.focus();
-  });
-
-  actions.appendChild(replyBtn);
-
-  div.appendChild(meta);
-  div.appendChild(body);
-  div.appendChild(actions);
-
+  div.textContent = text;
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
 }
 
-function renderSystem(text) {
-  const div = document.createElement("div");
-  div.className = "msg";
-  div.innerHTML = `<div class="body"><b>[system]</b> ${esc(text)}</div>`;
-  feed.appendChild(div);
-  feed.scrollTop = feed.scrollHeight;
+function send(obj) {
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
 }
 
-function hello() {
-  const name = (nameInput.value || "").trim() || "anon";
-  const ok = safeSend({ type: "hello", name });
+loginBtn.addEventListener("click", () => {
+  const email = (emailInput.value || "").trim();
+  const password = (passInput.value || "").trim();
+  if (!email || !password) return;
+  send({ type: "login", email, password });
+});
 
-  if (!ok) {
-    pendingHello = name;
-    renderSystem("still connecting...");
-    return;
-  }
+signupBtn.addEventListener("click", () => {
+  const email = (emailInput.value || "").trim();
+  const password = (passInput.value || "").trim();
+  const name = (nameInput.value || "").trim();
+  if (!email || !password || !name) return;
+  send({ type: "signup", email, password, name });
+});
 
-  nameSet = true;
-  textInput.focus();
+logoutBtn.addEventListener("click", () => {
+  send({ type: "logout" });
+  me = null;
+  feed.textContent = "";
+  chatBox.classList.add("hidden");
+  authBox.classList.remove("hidden");
+  authMsg.textContent = "";
+});
+
+function setView(next) {
+  view = next;
+  if (view === "dm") dmBar.classList.remove("hidden");
+  else dmBar.classList.add("hidden");
 }
 
-function send() {
-  const t = (textInput.value || "").trim();
-  if (!t) return;
+tabGeneral.addEventListener("click", () => setView("general"));
+tabDMs.addEventListener("click", () => setView("dm"));
+setView("general");
 
-  if (!nameSet) hello();
-  if (!nameSet) return;
+sendBtn.addEventListener("click", () => {
+  const text = (textInput.value || "").trim();
+  if (!text) return;
 
-  const ok = safeSend({ type: "chat", text: t, replyTo: replyingTo });
-  if (!ok) {
-    renderSystem("not connected");
-    return;
+  if (view === "general") {
+    send({ type: "chat", text });
+  } else {
+    const to = (dmToInput.value || "").trim();
+    if (!to) {
+      addLine("[system] choose someone to DM (click a name on the right or type it)");
+      return;
+    }
+    send({ type: "dm", to, text });
   }
 
   textInput.value = "";
-  showReplyBar(null);
   textInput.focus();
-}
-
-setNameBtn.addEventListener("click", hello);
-sendBtn.addEventListener("click", send);
+});
 
 textInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") send();
+  if (e.key === "Enter") sendBtn.click();
 });
 
-ws.addEventListener("open", () => {
-  setNameBtn.disabled = false;
-  sendBtn.disabled = false;
+function renderOnline(data) {
+  onlineLine.textContent = `Online: ${data.current} | Peak: ${data.peak}`;
+  onlineCount.textContent = `${data.current} online now (peak ${data.peak})`;
 
-  if (pendingHello) {
-    safeSend({ type: "hello", name: pendingHello });
-    nameSet = true;
-    pendingHello = null;
+  onlineNames.textContent = "";
+  for (const n of data.names) {
+    const b = document.createElement("button");
+    b.className = "nameBtn";
+    b.type = "button";
+    b.textContent = n;
+    b.addEventListener("click", () => {
+      dmToInput.value = n;
+      setView("dm");
+      textInput.focus();
+    });
+    onlineNames.appendChild(b);
   }
-});
-
-ws.addEventListener("close", () => {
-  setNameBtn.disabled = true;
-  sendBtn.disabled = true;
-  renderSystem("disconnected");
-});
+}
 
 ws.addEventListener("message", (e) => {
   let m;
   try { m = JSON.parse(e.data); } catch { return; }
 
   if (m.type === "system") {
-    renderSystem(m.text);
+    addLine("[system] " + m.text);
     return;
   }
 
-  if (m.type === "history" && Array.isArray(m.messages)) {
+  if (m.type === "auth_ok") {
+    authMsg.textContent = m.text;
+
+    if (m.text.startsWith("logged in")) {
+      me = m.text.replace("logged in as ", "");
+      meLine.textContent = `You: ${me}`;
+      authBox.classList.add("hidden");
+      chatBox.classList.remove("hidden");
+      feed.textContent = "";
+    }
+    return;
+  }
+
+  if (m.type === "auth_error") {
+    authMsg.textContent = m.text;
+    return;
+  }
+
+  if (m.type === "online") {
+    renderOnline(m);
+    return;
+  }
+
+  if (m.type === "history") {
     feed.textContent = "";
-    byId.clear();
-    for (const item of m.messages) renderMessage(item);
+    for (const item of m.messages) {
+      addLine(`[${new Date(item.ts).toLocaleTimeString()}] ${item.name}: ${item.text}`);
+    }
     return;
   }
 
-  if (m.type === "chat" && m.message) {
-    renderMessage(m.message);
+  if (m.type === "chat") {
+    const msg = m.message;
+    addLine(`[${new Date(msg.ts).toLocaleTimeString()}] ${msg.name}: ${msg.text}`);
+    return;
+  }
+
+  if (m.type === "dm") {
+    const msg = m.message;
+    addLine(`[DM ${new Date(msg.ts).toLocaleTimeString()}] ${msg.from} → ${msg.to}: ${msg.text}`);
   }
 });
-
-setNameBtn.disabled = true;
-sendBtn.disabled = true;
