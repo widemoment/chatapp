@@ -2,17 +2,24 @@ html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; font-size:
 body { display: flex; justify-content: center; align-items: center; }
 .wrap { width: min(1100px, 95vw); }
 h1 { text-align: center; margin: 0 0 14px 0; }
+
 .card { border: 1px solid #ccc; padding: 16px; }
 .card2 { border: 1px solid #ddd; padding: 12px; margin-top: 12px; }
 .hidden { display: none; }
+
 .row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 input { font-size: 18px; padding: 10px; flex: 1; min-width: 220px; }
 button { font-size: 18px; padding: 10px 14px; cursor: pointer; }
+
 .small { font-size: 14px; opacity: 0.8; margin-top: 8px; }
+
 .feed { border: 1px solid #ddd; height: 52vh; overflow-y: auto; padding: 10px; }
 .layout { display: grid; grid-template-columns: 1fr 320px; gap: 12px; }
+
 .side { border: 1px solid #ddd; padding: 10px; height: 52vh; overflow-y: auto; }
 .sideTitle { font-weight: bold; margin-bottom: 8px; }
+
 .list { display: flex; flex-direction: column; gap: 8px; }
 .itemBtn { text-align: left; padding: 8px; font-size: 16px; }
+
 .msg { padding: 6px 4px; border-bottom: 1px solid #eee; }
