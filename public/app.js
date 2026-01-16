@@ -49,8 +49,6 @@ let me = null;
 const proto = location.protocol === "https:" ? "wss" : "ws";
 let ws = null;
 
-/* ---------------- country from browser locale ---------------- */
-
 function inferCountry() {
   const langs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language])
     .filter(Boolean)
@@ -73,8 +71,6 @@ function inferCountry() {
   }
   return "xx";
 }
-
-/* ---------------- roles / UI helpers ---------------- */
 
 function setMode(m) {
   mode = m;
@@ -154,8 +150,6 @@ setView("general");
 
 accountBtn.onclick = () => accountBox.classList.toggle("hidden");
 
-/* ---------------- API helpers ---------------- */
-
 async function api(path, method, body) {
   const res = await fetch(path, {
     method,
@@ -170,8 +164,7 @@ async function apiAuth(path) {
   return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
-/* ---------------- E2EE DM crypto ---------------- */
-
+//e2ee dm crypto
 function b64(bytes) {
   let s = "";
   const arr = new Uint8Array(bytes);
@@ -303,8 +296,6 @@ async function getTheirDmPub(toId) {
   return theirPub;
 }
 
-/* ---------------- AUTH actions ---------------- */
-
 loginBtn.onclick = async () => {
   authMsg.textContent = "";
   const out = await api("/api/login", "POST", {
@@ -346,8 +337,6 @@ logoutBtn.onclick = async () => {
   showAuth();
 };
 
-/* ---------------- ACCOUNT ---------------- */
-
 changeName.onclick = async () => {
   accountMsg.textContent = "";
   const out = await api("/api/account/name", "POST", { token, name: newName.value });
@@ -374,9 +363,7 @@ changePass.onclick = async () => {
   curPass.value = "";
   newPass.value = "";
 };
-
-/* ---------------- WS ---------------- */
-
+//ws
 function wsConnect() {
   if (ws) {
     try { ws.close(); } catch {}
@@ -519,8 +506,6 @@ function wsConnect() {
   };
 }
 
-/* ---------------- SEND ---------------- */
-
 sendBtn.onclick = async () => {
   const t = (text.value || "").trim();
   if (!t || !ws || ws.readyState !== 1) return;
@@ -566,8 +551,6 @@ text.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendBtn.click();
 });
 
-/* ---------------- BOOT ---------------- */
-
 async function boot(keepFeed) {
   if (!token) {
     showAuth();
@@ -585,3 +568,4 @@ async function boot(keepFeed) {
 }
 
 boot(false);
+
