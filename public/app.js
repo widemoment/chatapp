@@ -1,193 +1,243 @@
-const authBox = document.getElementById("authBox");
-const chatBox = document.getElementById("chatBox");
+const $ = (id) => document.getElementById(id);
 
-const emailInput = document.getElementById("email");
-const passInput = document.getElementById("password");
-const nameInput = document.getElementById("name");
-const nameRow = document.getElementById("nameRow");
+const authBox = $("auth");
+const appBox = $("app");
 
-const loginBtn = document.getElementById("loginBtn");
-const signupBtn = document.getElementById("signupBtn");
-const toggleModeBtn = document.getElementById("toggleModeBtn");
-const authMsg = document.getElementById("authMsg");
+const email = $("email");
+const password = $("password");
+const nameRow = $("nameRow");
+const name = $("name");
+const authMsg = $("authMsg");
 
-const logoutBtn = document.getElementById("logoutBtn");
+const loginBtn = $("login");
+const signupBtn = $("signup");
+const toggleBtn = $("toggle");
+const logoutBtn = $("logout");
 
-const tabGeneral = document.getElementById("tabGeneral");
-const tabDMs = document.getElementById("tabDMs");
-const dmBar = document.getElementById("dmBar");
-const dmToInput = document.getElementById("dmTo");
+const meLine = $("me");
+const adminLink = $("adminLink");
 
-const feed = document.getElementById("feed");
-const textInput = document.getElementById("text");
-const sendBtn = document.getElementById("send");
+const generalBtn = $("generalBtn");
+const dmBtn = $("dmBtn");
+const accountBtn = $("accountBtn");
 
-const meLine = document.getElementById("meLine");
-const onlineLine = document.getElementById("onlineLine");
-const onlineCount = document.getElementById("onlineCount");
-const onlineNames = document.getElementById("onlineNames");
+const feed = $("feed");
+const text = $("text");
+const sendBtn = $("send");
 
-const proto = location.protocol === "https:" ? "wss" : "ws";
-const ws = new WebSocket(`${proto}://${location.host}`);
+const dmToRow = $("dmToRow");
+const dmTo = $("dmTo");
 
-let mode = "login";     // login | signup
-let view = "general";   // general | dm
+const onlineStats = $("onlineStats");
+const onlineList = $("onlineList");
+
+const accountBox = $("account");
+const newName = $("newName");
+const changeName = $("changeName");
+const curPass = $("curPass");
+const newPass = $("newPass");
+const changePass = $("changePass");
+const accountMsg = $("accountMsg");
+
+let mode = "signup";
+let view = "general";
+let token = localStorage.getItem("token") || null;
 let me = null;
 
-function setAuthMode(next) {
-  mode = next;
+function setMode(m) {
+  mode = m;
+  authMsg.textContent = "";
   if (mode === "signup") {
     nameRow.classList.remove("hidden");
-    toggleModeBtn.textContent = "Switch to Login";
+    toggleBtn.textContent = "Switch to Login";
   } else {
     nameRow.classList.add("hidden");
-    toggleModeBtn.textContent = "Switch to Sign up";
+    toggleBtn.textContent = "Switch to Sign up";
   }
-  authMsg.textContent = "";
+}
+setMode("signup");
+
+toggleBtn.onclick = () => setMode(mode === "signup" ? "login" : "signup");
+
+function showAuth() {
+  authBox.classList.remove("hidden");
+  appBox.classList.add("hidden");
+}
+function showApp() {
+  authBox.classList.add("hidden");
+  appBox.classList.remove("hidden");
 }
 
-setAuthMode("signup");
-
-toggleModeBtn.addEventListener("click", () => {
-  setAuthMode(mode === "signup" ? "login" : "signup");
-});
-
-function addLine(text) {
+function addLine(s) {
   const div = document.createElement("div");
   div.className = "msg";
-  div.textContent = text;
+  div.textContent = s;
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
 }
 
-function send(obj) {
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+function setView(v) {
+  view = v;
+  accountBox.classList.add("hidden");
+  if (view === "general") dmToRow.classList.add("hidden");
+  if (view === "dm") dmToRow.classList.remove("hidden");
 }
-
-loginBtn.addEventListener("click", () => {
-  const email = (emailInput.value || "").trim();
-  const password = (passInput.value || "").trim();
-  if (!email || !password) return;
-  send({ type: "login", email, password });
-});
-
-signupBtn.addEventListener("click", () => {
-  const email = (emailInput.value || "").trim();
-  const password = (passInput.value || "").trim();
-  const name = (nameInput.value || "").trim();
-  if (!email || !password || !name) return;
-  send({ type: "signup", email, password, name });
-});
-
-logoutBtn.addEventListener("click", () => {
-  send({ type: "logout" });
-  me = null;
-  feed.textContent = "";
-  chatBox.classList.add("hidden");
-  authBox.classList.remove("hidden");
-  authMsg.textContent = "";
-});
-
-function setView(next) {
-  view = next;
-  if (view === "dm") dmBar.classList.remove("hidden");
-  else dmBar.classList.add("hidden");
-}
-
-tabGeneral.addEventListener("click", () => setView("general"));
-tabDMs.addEventListener("click", () => setView("dm"));
+generalBtn.onclick = () => setView("general");
+dmBtn.onclick = () => setView("dm");
+accountBtn.onclick = () => accountBox.classList.toggle("hidden");
 setView("general");
 
-sendBtn.addEventListener("click", () => {
-  const text = (textInput.value || "").trim();
-  if (!text) return;
+async function api(path, method, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res.json().catch(() => ({ ok: false }));
+}
 
-  if (view === "general") {
-    send({ type: "chat", text });
-  } else {
-    const to = (dmToInput.value || "").trim();
-    if (!to) {
-      addLine("[system] choose someone to DM (click a name on the right or type it)");
+async function apiAuth(path) {
+  const res = await fetch(path, { headers: { "X-Token": token || "" } });
+  return res.json().catch(() => ({ ok: false }));
+}
+
+loginBtn.onclick = async () => {
+  const out = await api("/api/login", "POST", { email: email.value, password: password.value });
+  if (!out.ok) { authMsg.textContent = out.error || "login failed"; return; }
+  token = out.token;
+  localStorage.setItem("token", token);
+  await boot();
+};
+
+signupBtn.onclick = async () => {
+  const out = await api("/api/signup", "POST", { email: email.value, password: password.value, name: name.value });
+  if (!out.ok) { authMsg.textContent = out.error || "signup failed"; return; }
+  authMsg.textContent = "created. now login.";
+};
+
+logoutBtn.onclick = async () => {
+  if (token) await api("/api/logout", "POST", { token });
+  localStorage.removeItem("token");
+  token = null;
+  me = null;
+  showAuth();
+};
+
+changeName.onclick = async () => {
+  accountMsg.textContent = "";
+  const out = await api("/api/account/name", "POST", { token, name: newName.value });
+  if (!out.ok) { accountMsg.textContent = out.error || "failed"; return; }
+  accountMsg.textContent = "name updated";
+  await boot(true);
+};
+
+changePass.onclick = async () => {
+  accountMsg.textContent = "";
+  const out = await api("/api/account/password", "POST", { token, current: curPass.value, next: newPass.value });
+  if (!out.ok) { accountMsg.textContent = out.error || "failed"; return; }
+  accountMsg.textContent = "password updated";
+  curPass.value = "";
+  newPass.value = "";
+};
+
+const proto = location.protocol === "https:" ? "wss" : "ws";
+let ws = null;
+
+function wsConnect() {
+  if (ws) try { ws.close(); } catch {}
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "auth", token }));
+  };
+
+  ws.onmessage = (e) => {
+    let m;
+    try { m = JSON.parse(e.data); } catch { return; }
+
+    if (m.type === "auth_ok") {
+      me = m.me;
+      meLine.textContent = `You: ${me.name} (#${me.id}) role=${me.role}`;
+      if (me.role === "owner" || me.role === "moderator") adminLink.classList.remove("hidden");
+      else adminLink.classList.add("hidden");
+      showApp();
       return;
     }
-    send({ type: "dm", to, text });
+
+    if (m.type === "auth_error") {
+      showAuth();
+      authMsg.textContent = m.text || "auth error";
+      return;
+    }
+
+    if (m.type === "online") {
+      onlineStats.textContent = `Now: ${m.current} | Peak: ${m.peak}`;
+      onlineList.textContent = "";
+      for (const u of m.users) {
+        const b = document.createElement("button");
+        b.className = "itemBtn";
+        b.type = "button";
+        b.textContent = `${u.name} (#${u.id})`;
+        b.onclick = () => { dmTo.value = String(u.id); setView("dm"); text.focus(); };
+        onlineList.appendChild(b);
+      }
+      return;
+    }
+
+    if (m.type === "history") {
+      feed.textContent = "";
+      for (const item of m.messages) {
+        addLine(`[${new Date(item.ts).toLocaleTimeString()}] ${item.name} (#${item.userId}): ${item.text}`);
+      }
+      return;
+    }
+
+    if (m.type === "system") {
+      addLine("[system] " + m.text);
+      return;
+    }
+
+    if (m.type === "chat") {
+      const msg = m.message;
+      addLine(`[${new Date(msg.ts).toLocaleTimeString()}] ${msg.name} (#${msg.userId}): ${msg.text}`);
+      return;
+    }
+
+    if (m.type === "dm") {
+      const msg = m.message;
+      addLine(`[DM ${new Date(msg.ts).toLocaleTimeString()}] ${msg.from} (#${msg.fromId}) -> #${msg.toId}: ${msg.text}`);
+    }
+  };
+}
+
+sendBtn.onclick = () => {
+  const t = (text.value || "").trim();
+  if (!t || !ws || ws.readyState !== 1) return;
+
+  if (view === "general") {
+    ws.send(JSON.stringify({ type: "chat", text: t }));
+  } else {
+    const toId = Number((dmTo.value || "").trim());
+    if (!Number.isFinite(toId) || toId <= 0) { addLine("[system] enter a valid user id"); return; }
+    ws.send(JSON.stringify({ type: "dm", toId, text: t }));
   }
 
-  textInput.value = "";
-  textInput.focus();
-});
+  text.value = "";
+  text.focus();
+};
 
-textInput.addEventListener("keydown", (e) => {
+text.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendBtn.click();
 });
 
-function renderOnline(data) {
-  onlineLine.textContent = `Online: ${data.current} | Peak: ${data.peak}`;
-  onlineCount.textContent = `${data.current} online now (peak ${data.peak})`;
+async function boot(keepFeed) {
+  if (!token) { showAuth(); return; }
 
-  onlineNames.textContent = "";
-  for (const n of data.names) {
-    const b = document.createElement("button");
-    b.className = "nameBtn";
-    b.type = "button";
-    b.textContent = n;
-    b.addEventListener("click", () => {
-      dmToInput.value = n;
-      setView("dm");
-      textInput.focus();
-    });
-    onlineNames.appendChild(b);
-  }
+  const out = await apiAuth("/api/me");
+  if (!out.ok) { showAuth(); return; }
+
+  if (!keepFeed) feed.textContent = "";
+  wsConnect();
 }
 
-ws.addEventListener("message", (e) => {
-  let m;
-  try { m = JSON.parse(e.data); } catch { return; }
-
-  if (m.type === "system") {
-    addLine("[system] " + m.text);
-    return;
-  }
-
-  if (m.type === "auth_ok") {
-    authMsg.textContent = m.text;
-
-    if (m.text.startsWith("logged in")) {
-      me = m.text.replace("logged in as ", "");
-      meLine.textContent = `You: ${me}`;
-      authBox.classList.add("hidden");
-      chatBox.classList.remove("hidden");
-      feed.textContent = "";
-    }
-    return;
-  }
-
-  if (m.type === "auth_error") {
-    authMsg.textContent = m.text;
-    return;
-  }
-
-  if (m.type === "online") {
-    renderOnline(m);
-    return;
-  }
-
-  if (m.type === "history") {
-    feed.textContent = "";
-    for (const item of m.messages) {
-      addLine(`[${new Date(item.ts).toLocaleTimeString()}] ${item.name}: ${item.text}`);
-    }
-    return;
-  }
-
-  if (m.type === "chat") {
-    const msg = m.message;
-    addLine(`[${new Date(msg.ts).toLocaleTimeString()}] ${msg.name}: ${msg.text}`);
-    return;
-  }
-
-  if (m.type === "dm") {
-    const msg = m.message;
-    addLine(`[DM ${new Date(msg.ts).toLocaleTimeString()}] ${msg.from} → ${msg.to}: ${msg.text}`);
-  }
-});
+boot(false);
