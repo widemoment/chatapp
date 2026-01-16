@@ -14,7 +14,9 @@ const wss = new WebSocketServer({ server });
 app.use(express.json());
 app.use(express.static("public"));
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
 
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 const MOD_EMAILS = (process.env.MOD_EMAILS || "")
@@ -44,6 +46,42 @@ function isOwner(u) {
 }
 function isMod(u) {
   return u?.role === "moderator" || u?.role === "owner";
+}
+
+async function runSchema() {
+  const sql = `
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    pass_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'enthusiast',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    username_changed_at TIMESTAMPTZ,
+    muted_until TIMESTAMPTZ,
+    banned_until TIMESTAMPTZ
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY,
+    kind TEXT NOT NULL,
+    from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    ts TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_messages_kind_ts ON messages(kind, ts);
+  CREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen);
+  `;
+  await pool.query(sql);
 }
 
 async function cleanupOldMessages() {
@@ -106,8 +144,6 @@ function requireModApi(u, res) {
   return null;
 }
 
-/* -------- REST AUTH -------- */
-
 app.post("/api/signup", async (req, res) => {
   try {
     const email = cleanEmail(req.body?.email);
@@ -123,7 +159,7 @@ app.post("/api/signup", async (req, res) => {
     const q = await pool.query(
       `INSERT INTO users (email, name, pass_hash)
        VALUES ($1, $2, $3)
-       RETURNING id, email, name, role`,
+       RETURNING id`,
       [email, name, passHash]
     );
 
@@ -150,13 +186,12 @@ app.post("/api/login", async (req, res) => {
     );
     if (!q.rows.length) return res.status(401).json({ ok: false, error: "bad_login" });
 
-    const u = q.rows[0];
-
     await ensureRolesFromEnv();
 
-    const qRole = await pool.query("SELECT role, banned_until FROM users WHERE id=$1", [u.id]);
-    const role = qRole.rows[0].role;
-    const bannedUntil = qRole.rows[0].banned_until ? new Date(qRole.rows[0].banned_until) : null;
+    const u2 = await pool.query("SELECT id, email, name, role, pass_hash, banned_until FROM users WHERE id=$1", [q.rows[0].id]);
+    const u = u2.rows[0];
+
+    const bannedUntil = u.banned_until ? new Date(u.banned_until) : null;
     if (bannedUntil && bannedUntil > new Date()) {
       return res.status(403).json({ ok: false, error: "banned", until: bannedUntil.toISOString() });
     }
@@ -168,11 +203,7 @@ app.post("/api/login", async (req, res) => {
     const token = crypto.randomBytes(24).toString("hex");
     await pool.query("INSERT INTO sessions (token, user_id) VALUES ($1, $2)", [token, u.id]);
 
-    res.json({
-      ok: true,
-      token,
-      user: { id: u.id, email: u.email, name: u.name, role }
-    });
+    res.json({ ok: true, token, user: { id: u.id, email: u.email, name: u.name, role: u.role } });
   } catch {
     res.status(500).json({ ok: false, error: "server_error" });
   }
@@ -201,8 +232,6 @@ app.get("/api/me", async (req, res) => {
     }
   });
 });
-
-/* -------- ACCOUNT -------- */
 
 app.post("/api/account/name", async (req, res) => {
   const token = clean(req.body?.token, 200);
@@ -246,8 +275,6 @@ app.post("/api/account/password", async (req, res) => {
   await pool.query("UPDATE users SET pass_hash=$1 WHERE id=$2", [passHash, u.id]);
   res.json({ ok: true });
 });
-
-/* -------- ADMIN -------- */
 
 app.get("/api/admin/users", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
@@ -309,11 +336,7 @@ app.post("/api/admin/ban", async (req, res) => {
     "UPDATE users SET banned_until = NOW() + ($1 || ' minutes')::interval WHERE id=$2",
     [String(minutes), targetId]
   );
-
-  await pool.query(
-    "DELETE FROM sessions WHERE user_id=$1",
-    [targetId]
-  );
+  await pool.query("DELETE FROM sessions WHERE user_id=$1", [targetId]);
 
   res.json({ ok: true });
 });
@@ -346,13 +369,10 @@ app.post("/api/admin/role", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* -------- WEBSOCKET CHAT -------- */
-
 wss.on("connection", (ws) => {
   ws.user = null;
 
   ws.send(JSON.stringify({ type: "system", text: "connected" }));
-  ws.send(JSON.stringify({ type: "online", ...snapshotOnline() }));
 
   ws.on("message", async (raw) => {
     let msg;
@@ -370,6 +390,7 @@ wss.on("connection", (ws) => {
 
       const qU = await pool.query("SELECT id, name, role, muted_until, banned_until FROM users WHERE id=$1", [u.id]);
       const row = qU.rows[0];
+
       const bannedUntil = row.banned_until ? new Date(row.banned_until) : null;
       if (bannedUntil && bannedUntil > new Date()) {
         ws.send(JSON.stringify({ type: "auth_error", text: "banned" }));
@@ -378,6 +399,8 @@ wss.on("connection", (ws) => {
 
       ws.user = { id: row.id, name: row.name, role: row.role, token };
       online.set(ws, ws.user);
+
+      if (online.size > peakOnline) peakOnline = online.size;
 
       await cleanupOldMessages();
 
@@ -402,6 +425,7 @@ wss.on("connection", (ws) => {
       }));
 
       pushOnline();
+      ws.send(JSON.stringify({ type: "online", ...snapshotOnline() }));
       broadcast({ type: "system", text: `${row.name} joined` });
       return;
     }
@@ -412,7 +436,7 @@ wss.on("connection", (ws) => {
       const text = clean(msg.text, 500);
       if (!text) return;
 
-      const q = await pool.query("SELECT muted_until, banned_until FROM users WHERE id=$1", [ws.user.id]);
+      const q = await pool.query("SELECT muted_until, banned_until, name FROM users WHERE id=$1", [ws.user.id]);
       const mutedUntil = q.rows[0]?.muted_until ? new Date(q.rows[0].muted_until) : null;
       const bannedUntil = q.rows[0]?.banned_until ? new Date(q.rows[0].banned_until) : null;
 
@@ -480,4 +504,14 @@ wss.on("connection", (ws) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT);
+
+async function main() {
+  await runSchema();
+  await ensureRolesFromEnv();
+  server.listen(PORT);
+}
+
+main().catch((err) => {
+  console.error("Startup failed:", err);
+  process.exit(1);
+});
