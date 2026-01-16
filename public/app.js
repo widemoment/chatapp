@@ -7,7 +7,6 @@ const email = $("email");
 const password = $("password");
 const nameRow = $("nameRow");
 const name = $("name");
-const country = $("country");
 const authMsg = $("authMsg");
 
 const loginBtn = $("login");
@@ -35,8 +34,6 @@ const onlineList = $("onlineList");
 const accountBox = $("account");
 const newName = $("newName");
 const changeName = $("changeName");
-const newCountry = $("newCountry");
-const changeCountry = $("changeCountry");
 const curPass = $("curPass");
 const newPass = $("newPass");
 const changePass = $("changePass");
@@ -49,31 +46,45 @@ let view = "general";
 let token = localStorage.getItem("token") || null;
 let me = null;
 
+function inferCountry() {
+  const langs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language])
+    .filter(Boolean)
+    .map(String);
+
+  for (const l of langs) {
+    const s = l.trim();
+    if (!s) continue;
+
+    if (s.includes("-")) {
+      const parts = s.split("-");
+      const cc = (parts[1] || "").toLowerCase();
+      if (/^[a-z]{2}$/.test(cc)) return cc;
+    }
+    if (s.includes("_")) {
+      const parts = s.split("_");
+      const cc = (parts[1] || "").toLowerCase();
+      if (/^[a-z]{2}$/.test(cc)) return cc;
+    }
+  }
+  return "xx";
+}
+
 function setMode(m) {
   mode = m;
   authMsg.textContent = "";
   if (mode === "signup") {
     nameRow.classList.remove("hidden");
-    $("countryRow").classList.remove("hidden");
     toggleBtn.textContent = "Switch to Login";
   } else {
     nameRow.classList.add("hidden");
-    $("countryRow").classList.add("hidden");
     toggleBtn.textContent = "Switch to Sign up";
   }
 }
 setMode("signup");
-
 toggleBtn.onclick = () => setMode(mode === "signup" ? "login" : "signup");
 
-function showAuth() {
-  authBox.classList.remove("hidden");
-  appBox.classList.add("hidden");
-}
-function showApp() {
-  authBox.classList.add("hidden");
-  appBox.classList.remove("hidden");
-}
+function showAuth() { authBox.classList.remove("hidden"); appBox.classList.add("hidden"); }
+function showApp() { authBox.classList.add("hidden"); appBox.classList.remove("hidden"); }
 
 function roleClass(role) {
   if (role === "owner") return "role-owner";
@@ -106,13 +117,8 @@ function makeNameLine({ name, id, role, country }) {
 function addLine(parts) {
   const div = document.createElement("div");
   div.className = "msg";
-
-  if (typeof parts === "string") {
-    div.textContent = parts;
-  } else {
-    for (const p of parts) div.appendChild(p);
-  }
-
+  if (typeof parts === "string") div.textContent = parts;
+  else for (const p of parts) div.appendChild(p);
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
 }
@@ -147,7 +153,11 @@ async function apiAuth(path) {
 
 loginBtn.onclick = async () => {
   authMsg.textContent = "";
-  const out = await api("/api/login", "POST", { email: email.value, password: password.value });
+  const out = await api("/api/login", "POST", {
+    email: email.value,
+    password: password.value,
+    country: inferCountry()
+  });
   if (!out.ok) { authMsg.textContent = out.error || "login failed"; return; }
   token = out.token;
   localStorage.setItem("token", token);
@@ -160,7 +170,7 @@ signupBtn.onclick = async () => {
     email: email.value,
     password: password.value,
     name: name.value,
-    country: country.value
+    country: inferCountry()
   });
   if (!out.ok) { authMsg.textContent = out.error || "signup failed"; return; }
   authMsg.textContent = "Account created. Now switch to Login and login.";
@@ -180,14 +190,6 @@ changeName.onclick = async () => {
   const out = await api("/api/account/name", "POST", { token, name: newName.value });
   if (!out.ok) { accountMsg.textContent = out.error || "failed"; return; }
   accountMsg.textContent = "name updated";
-  await boot(true);
-};
-
-changeCountry.onclick = async () => {
-  accountMsg.textContent = "";
-  const out = await api("/api/account/country", "POST", { token, country: newCountry.value });
-  if (!out.ok) { accountMsg.textContent = out.error || "failed"; return; }
-  accountMsg.textContent = "country updated";
   await boot(true);
 };
 
@@ -222,7 +224,6 @@ function wsConnect() {
       if (me.role === "owner" || me.role === "moderator") adminLink.classList.remove("hidden");
       else adminLink.classList.add("hidden");
       showApp();
-      newCountry.value = me.country || "";
       return;
     }
 
@@ -326,14 +327,10 @@ sendBtn.onclick = () => {
   const t = (text.value || "").trim();
   if (!t || !ws || ws.readyState !== 1) return;
 
-  if (view === "general") {
-    ws.send(JSON.stringify({ type: "chat", text: t }));
-  } else {
+  if (view === "general") ws.send(JSON.stringify({ type: "chat", text: t }));
+  else {
     const toId = Number((dmTo.value || "").trim());
-    if (!Number.isFinite(toId) || toId <= 0) {
-      addLine("[system] enter a valid user id (number)");
-      return;
-    }
+    if (!Number.isFinite(toId) || toId <= 0) { addLine("[system] enter a valid user id (number)"); return; }
     ws.send(JSON.stringify({ type: "dm", toId, text: t }));
   }
 
