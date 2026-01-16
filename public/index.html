@@ -12,13 +12,13 @@
 
       <section class="card" id="auth">
         <div class="row">
-          <input id="email" placeholder="email" />
+          <input id="email" placeholder="email" autocomplete="email" />
         </div>
         <div class="row">
-          <input id="password" type="password" placeholder="password (8+ chars)" />
+          <input id="password" type="password" placeholder="password (8+ chars)" autocomplete="current-password" />
         </div>
         <div class="row" id="nameRow">
-          <input id="name" placeholder="username (signup only)" />
+          <input id="name" placeholder="username (signup only)" autocomplete="nickname" />
         </div>
         <div class="row">
           <button id="login">Login</button>
@@ -43,12 +43,34 @@
         <div class="layout">
           <div>
             <div id="feed" class="feed"></div>
+
             <div id="dmToRow" class="row hidden">
               <input id="dmTo" placeholder="DM to user id (e.g. 3)" />
             </div>
+
             <div class="row">
-              <input id="text" placeholder="message" />
+              <input id="text" placeholder="message" autocomplete="off" />
               <button id="send">Send</button>
+            </div>
+
+            <div id="account" class="card2 hidden">
+              <div class="sideTitle">Account</div>
+              <div class="small">Username can be changed once per 30 days.</div>
+
+              <div class="row">
+                <input id="newName" placeholder="new username" />
+                <button id="changeName">Change name</button>
+              </div>
+
+              <div class="row">
+                <input id="curPass" type="password" placeholder="current password" autocomplete="current-password" />
+              </div>
+              <div class="row">
+                <input id="newPass" type="password" placeholder="new password (8+ chars)" autocomplete="new-password" />
+                <button id="changePass">Change password</button>
+              </div>
+
+              <div class="small" id="accountMsg"></div>
             </div>
           </div>
 
@@ -59,22 +81,7 @@
           </aside>
         </div>
 
-        <div id="account" class="card2 hidden">
-          <div class="sideTitle">Account</div>
-          <div class="small">Username can be changed once per 30 days.</div>
-          <div class="row">
-            <input id="newName" placeholder="new username" />
-            <button id="changeName">Change name</button>
-          </div>
-          <div class="row">
-            <input id="curPass" type="password" placeholder="current password" />
-          </div>
-          <div class="row">
-            <input id="newPass" type="password" placeholder="new password (8+ chars)" />
-            <button id="changePass">Change password</button>
-          </div>
-          <div class="small" id="accountMsg"></div>
-        </div>
+        <div class="small" id="hint"></div>
       </section>
 
       <script src="/app.js"></script>
