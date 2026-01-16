@@ -14,9 +14,7 @@ const wss = new WebSocketServer({ server });
 app.use(express.json());
 app.use(express.static("public"));
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 const MOD_EMAILS = (process.env.MOD_EMAILS || "")
@@ -24,7 +22,7 @@ const MOD_EMAILS = (process.env.MOD_EMAILS || "")
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
 
-const TTL_HOURS = 1;
+const TTL_MS = 60 * 60 * 1000;
 
 const online = new Map(); // ws -> { id, name, role, token }
 let peakOnline = 0;
@@ -42,50 +40,33 @@ function okPassword(p) {
   return typeof p === "string" && p.length >= 8;
 }
 function isOwner(u) {
-  return u.role === "owner";
+  return u?.role === "owner";
 }
 function isMod(u) {
-  return u.role === "moderator" || u.role === "owner";
-}
-function now() {
-  return new Date();
-}
-
-async function dbInit() {
-  // Optional: auto-assign roles based on env vars when users exist
-  if (!OWNER_EMAIL && MOD_EMAILS.length === 0) return;
-  const client = await pool.connect();
-  try {
-    if (OWNER_EMAIL) {
-      await client.query(
-        "UPDATE users SET role='owner' WHERE email=$1",
-        [OWNER_EMAIL]
-      );
-    }
-    for (const em of MOD_EMAILS) {
-      await client.query(
-        "UPDATE users SET role='moderator' WHERE email=$1 AND role <> 'owner'",
-        [em]
-      );
-    }
-  } finally {
-    client.release();
-  }
+  return u?.role === "moderator" || u?.role === "owner";
 }
 
 async function cleanupOldMessages() {
-  await pool.query(
-    "DELETE FROM messages WHERE ts < NOW() - ($1 || ' hours')::interval",
-    [String(TTL_HOURS)]
-  );
+  await pool.query("DELETE FROM messages WHERE ts < NOW() - INTERVAL '1 hour'");
 }
+
 setInterval(() => {
   cleanupOldMessages().catch(() => {});
 }, 15000);
 
+async function ensureRolesFromEnv() {
+  if (OWNER_EMAIL) {
+    await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
+  }
+  for (const em of MOD_EMAILS) {
+    await pool.query("UPDATE users SET role='moderator' WHERE email=$1 AND role <> 'owner'", [em]);
+  }
+}
+
 async function getUserByToken(token) {
   const t = clean(token, 200);
   if (!t) return null;
+
   const q = await pool.query(
     `SELECT u.id, u.email, u.name, u.role, u.muted_until, u.banned_until
      FROM sessions s
@@ -94,22 +75,9 @@ async function getUserByToken(token) {
     [t]
   );
   if (!q.rows.length) return null;
+
   await pool.query("UPDATE sessions SET last_seen=NOW() WHERE token=$1", [t]);
   return q.rows[0];
-}
-
-async function ensureRole(email) {
-  if (!email) return "enthusiast";
-  if (OWNER_EMAIL && email === OWNER_EMAIL) return "owner";
-  if (MOD_EMAILS.includes(email)) return "moderator";
-  return "enthusiast";
-}
-
-function broadcast(payload) {
-  const data = JSON.stringify(payload);
-  for (const ws of online.keys()) {
-    if (ws.readyState === 1) ws.send(data);
-  }
 }
 
 function snapshotOnline() {
@@ -121,9 +89,24 @@ function snapshotOnline() {
   return { current, peak: peakOnline, users: list };
 }
 
+function broadcast(payload) {
+  const data = JSON.stringify(payload);
+  for (const ws of online.keys()) {
+    if (ws.readyState === 1) ws.send(data);
+  }
+}
+
 function pushOnline() {
   broadcast({ type: "online", ...snapshotOnline() });
 }
+
+function requireModApi(u, res) {
+  if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
+  if (!isMod(u)) return res.status(403).json({ ok: false, error: "not_allowed" });
+  return null;
+}
+
+/* -------- REST AUTH -------- */
 
 app.post("/api/signup", async (req, res) => {
   try {
@@ -136,19 +119,20 @@ app.post("/api/signup", async (req, res) => {
     if (!okPassword(password)) return res.status(400).json({ ok: false, error: "weak_password" });
 
     const passHash = bcrypt.hashSync(password, 10);
-    const role = await ensureRole(email);
 
     const q = await pool.query(
-      `INSERT INTO users (email, name, pass_hash, role)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (email, name, pass_hash)
+       VALUES ($1, $2, $3)
        RETURNING id, email, name, role`,
-      [email, name, passHash, role]
+      [email, name, passHash]
     );
 
-    res.json({ ok: true, user: q.rows[0] });
-    await dbInit();
+    await ensureRolesFromEnv();
+    const q2 = await pool.query("SELECT id, email, name, role FROM users WHERE id=$1", [q.rows[0].id]);
+
+    res.json({ ok: true, user: q2.rows[0] });
   } catch (e) {
-    if (String(e?.message || "").includes("duplicate")) {
+    if (String(e?.message || "").toLowerCase().includes("duplicate")) {
       return res.status(409).json({ ok: false, error: "email_taken" });
     }
     res.status(500).json({ ok: false, error: "server_error" });
@@ -167,19 +151,28 @@ app.post("/api/login", async (req, res) => {
     if (!q.rows.length) return res.status(401).json({ ok: false, error: "bad_login" });
 
     const u = q.rows[0];
-    if (u.banned_until && new Date(u.banned_until) > now()) {
-      return res.status(403).json({ ok: false, error: "banned", until: u.banned_until });
+
+    await ensureRolesFromEnv();
+
+    const qRole = await pool.query("SELECT role, banned_until FROM users WHERE id=$1", [u.id]);
+    const role = qRole.rows[0].role;
+    const bannedUntil = qRole.rows[0].banned_until ? new Date(qRole.rows[0].banned_until) : null;
+    if (bannedUntil && bannedUntil > new Date()) {
+      return res.status(403).json({ ok: false, error: "banned", until: bannedUntil.toISOString() });
     }
 
-    const ok = bcrypt.compareSync(password, u.pass_hash);
-    if (!ok) return res.status(401).json({ ok: false, error: "bad_login" });
-
-    await dbInit();
+    if (!bcrypt.compareSync(password, u.pass_hash)) {
+      return res.status(401).json({ ok: false, error: "bad_login" });
+    }
 
     const token = crypto.randomBytes(24).toString("hex");
     await pool.query("INSERT INTO sessions (token, user_id) VALUES ($1, $2)", [token, u.id]);
 
-    res.json({ ok: true, token, user: { id: u.id, email: u.email, name: u.name, role: u.role } });
+    res.json({
+      ok: true,
+      token,
+      user: { id: u.id, email: u.email, name: u.name, role }
+    });
   } catch {
     res.status(500).json({ ok: false, error: "server_error" });
   }
@@ -187,8 +180,7 @@ app.post("/api/login", async (req, res) => {
 
 app.post("/api/logout", async (req, res) => {
   const token = clean(req.body?.token, 200);
-  if (!token) return res.json({ ok: true });
-  await pool.query("DELETE FROM sessions WHERE token=$1", [token]);
+  if (token) await pool.query("DELETE FROM sessions WHERE token=$1", [token]);
   res.json({ ok: true });
 });
 
@@ -196,12 +188,26 @@ app.get("/api/me", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
   const u = await getUserByToken(token);
   if (!u) return res.status(401).json({ ok: false });
-  res.json({ ok: true, user: { id: u.id, email: u.email, name: u.name, role: u.role, muted_until: u.muted_until, banned_until: u.banned_until } });
+
+  res.json({
+    ok: true,
+    user: {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      muted_until: u.muted_until,
+      banned_until: u.banned_until
+    }
+  });
 });
+
+/* -------- ACCOUNT -------- */
 
 app.post("/api/account/name", async (req, res) => {
   const token = clean(req.body?.token, 200);
   const newName = clean(req.body?.name, 24);
+
   const u = await getUserByToken(token);
   if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
   if (!newName) return res.status(400).json({ ok: false, error: "invalid_name" });
@@ -210,17 +216,13 @@ app.post("/api/account/name", async (req, res) => {
   const last = q.rows[0]?.username_changed_at ? new Date(q.rows[0].username_changed_at) : null;
 
   if (last) {
-    const ms = now() - last;
+    const ms = Date.now() - last.getTime();
     if (ms < 30 * 24 * 60 * 60 * 1000) {
       return res.status(429).json({ ok: false, error: "name_change_cooldown" });
     }
   }
 
-  await pool.query(
-    "UPDATE users SET name=$1, username_changed_at=NOW() WHERE id=$2",
-    [newName, u.id]
-  );
-
+  await pool.query("UPDATE users SET name=$1, username_changed_at=NOW() WHERE id=$2", [newName, u.id]);
   res.json({ ok: true });
 });
 
@@ -228,24 +230,24 @@ app.post("/api/account/password", async (req, res) => {
   const token = clean(req.body?.token, 200);
   const current = String(req.body?.current ?? "");
   const next = String(req.body?.next ?? "");
+
   const u = await getUserByToken(token);
   if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
   if (!okPassword(next)) return res.status(400).json({ ok: false, error: "weak_password" });
 
   const q = await pool.query("SELECT pass_hash FROM users WHERE id=$1", [u.id]);
-  const ok = bcrypt.compareSync(current, q.rows[0].pass_hash);
-  if (!ok) return res.status(403).json({ ok: false, error: "wrong_current_password" });
+  if (!q.rows.length) return res.status(500).json({ ok: false, error: "server_error" });
+
+  if (!bcrypt.compareSync(current, q.rows[0].pass_hash)) {
+    return res.status(403).json({ ok: false, error: "wrong_current_password" });
+  }
 
   const passHash = bcrypt.hashSync(next, 10);
   await pool.query("UPDATE users SET pass_hash=$1 WHERE id=$2", [passHash, u.id]);
   res.json({ ok: true });
 });
 
-function requireModApi(u, res) {
-  if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
-  if (!isMod(u)) return res.status(403).json({ ok: false, error: "not_allowed" });
-  return null;
-}
+/* -------- ADMIN -------- */
 
 app.get("/api/admin/users", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
@@ -256,7 +258,7 @@ app.get("/api/admin/users", async (req, res) => {
   const q = await pool.query(
     "SELECT id, email, name, role, created_at, muted_until, banned_until FROM users ORDER BY id ASC"
   );
-  res.json({ ok: true, users: q.rows });
+  res.json({ ok: true, meRole: u.role, users: q.rows });
 });
 
 app.post("/api/admin/mute", async (req, res) => {
@@ -275,6 +277,19 @@ app.post("/api/admin/mute", async (req, res) => {
     "UPDATE users SET muted_until = NOW() + ($1 || ' minutes')::interval WHERE id=$2",
     [String(minutes), targetId]
   );
+
+  res.json({ ok: true });
+});
+
+app.post("/api/admin/unmute", async (req, res) => {
+  const token = clean(req.body?.token, 200);
+  const targetId = Number(req.body?.userId);
+
+  const u = await getUserByToken(token);
+  const err = requireModApi(u, res);
+  if (err) return;
+
+  await pool.query("UPDATE users SET muted_until=NULL WHERE id=$1", [targetId]);
   res.json({ ok: true });
 });
 
@@ -294,8 +309,44 @@ app.post("/api/admin/ban", async (req, res) => {
     "UPDATE users SET banned_until = NOW() + ($1 || ' minutes')::interval WHERE id=$2",
     [String(minutes), targetId]
   );
+
+  await pool.query(
+    "DELETE FROM sessions WHERE user_id=$1",
+    [targetId]
+  );
+
   res.json({ ok: true });
 });
+
+app.post("/api/admin/unban", async (req, res) => {
+  const token = clean(req.body?.token, 200);
+  const targetId = Number(req.body?.userId);
+
+  const u = await getUserByToken(token);
+  const err = requireModApi(u, res);
+  if (err) return;
+
+  await pool.query("UPDATE users SET banned_until=NULL WHERE id=$1", [targetId]);
+  res.json({ ok: true });
+});
+
+app.post("/api/admin/role", async (req, res) => {
+  const token = clean(req.body?.token, 200);
+  const targetId = Number(req.body?.userId);
+  const role = clean(req.body?.role, 20);
+
+  const u = await getUserByToken(token);
+  if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
+  if (!isOwner(u)) return res.status(403).json({ ok: false, error: "owner_only" });
+
+  if (!Number.isFinite(targetId) || targetId <= 0) return res.status(400).json({ ok: false });
+  if (!["moderator", "enthusiast"].includes(role)) return res.status(400).json({ ok: false });
+
+  await pool.query("UPDATE users SET role=$1 WHERE id=$2", [role, targetId]);
+  res.json({ ok: true });
+});
+
+/* -------- WEBSOCKET CHAT -------- */
 
 wss.on("connection", (ws) => {
   ws.user = null;
@@ -315,22 +366,43 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      if (u.banned_until && new Date(u.banned_until) > now()) {
+      await ensureRolesFromEnv();
+
+      const qU = await pool.query("SELECT id, name, role, muted_until, banned_until FROM users WHERE id=$1", [u.id]);
+      const row = qU.rows[0];
+      const bannedUntil = row.banned_until ? new Date(row.banned_until) : null;
+      if (bannedUntil && bannedUntil > new Date()) {
         ws.send(JSON.stringify({ type: "auth_error", text: "banned" }));
         return;
       }
 
-      ws.user = { id: u.id, name: u.name, role: u.role, token };
+      ws.user = { id: row.id, name: row.name, role: row.role, token };
       online.set(ws, ws.user);
 
       await cleanupOldMessages();
+
       const hist = await pool.query(
-        "SELECT m.id, m.text, m.ts, u.name, u.id AS user_id FROM messages m JOIN users u ON u.id=m.from_user_id WHERE m.kind='general' ORDER BY m.ts ASC"
+        `SELECT m.id, m.text, m.ts, u.name, u.id AS user_id
+         FROM messages m
+         JOIN users u ON u.id=m.from_user_id
+         WHERE m.kind='general'
+         ORDER BY m.ts ASC`
       );
 
-      ws.send(JSON.stringify({ type: "auth_ok", me: { id: u.id, name: u.name, role: u.role } }));
-      ws.send(JSON.stringify({ type: "history", messages: hist.rows.map(r => ({ id: r.id, ts: r.ts, name: r.name, userId: r.user_id, text: r.text })) }));
+      ws.send(JSON.stringify({ type: "auth_ok", me: { id: row.id, name: row.name, role: row.role } }));
+      ws.send(JSON.stringify({
+        type: "history",
+        messages: hist.rows.map(r => ({
+          id: r.id,
+          ts: r.ts,
+          name: r.name,
+          userId: r.user_id,
+          text: r.text
+        }))
+      }));
+
       pushOnline();
+      broadcast({ type: "system", text: `${row.name} joined` });
       return;
     }
 
@@ -340,13 +412,13 @@ wss.on("connection", (ws) => {
       const text = clean(msg.text, 500);
       if (!text) return;
 
-      const u = await pool.query("SELECT muted_until, banned_until FROM users WHERE id=$1", [ws.user.id]);
-      const mutedUntil = u.rows[0]?.muted_until ? new Date(u.rows[0].muted_until) : null;
-      const bannedUntil = u.rows[0]?.banned_until ? new Date(u.rows[0].banned_until) : null;
+      const q = await pool.query("SELECT muted_until, banned_until FROM users WHERE id=$1", [ws.user.id]);
+      const mutedUntil = q.rows[0]?.muted_until ? new Date(q.rows[0].muted_until) : null;
+      const bannedUntil = q.rows[0]?.banned_until ? new Date(q.rows[0].banned_until) : null;
 
-      if (bannedUntil && bannedUntil > now()) return;
+      if (bannedUntil && bannedUntil > new Date()) return;
 
-      if (mutedUntil && mutedUntil > now()) {
+      if (mutedUntil && mutedUntil > new Date()) {
         ws.send(JSON.stringify({ type: "system", text: `muted until ${mutedUntil.toLocaleString()}` }));
         return;
       }
@@ -357,7 +429,10 @@ wss.on("connection", (ws) => {
         [id, ws.user.id, text]
       );
 
-      broadcast({ type: "chat", message: { id, ts: new Date().toISOString(), name: ws.user.name, userId: ws.user.id, text } });
+      broadcast({
+        type: "chat",
+        message: { id, ts: new Date().toISOString(), name: ws.user.name, userId: ws.user.id, text }
+      });
       return;
     }
 
@@ -367,13 +442,24 @@ wss.on("connection", (ws) => {
       if (!Number.isFinite(toId) || toId <= 0) return;
       if (!text) return;
 
+      const qBan = await pool.query("SELECT banned_until FROM users WHERE id=$1", [ws.user.id]);
+      const bannedUntil = qBan.rows[0]?.banned_until ? new Date(qBan.rows[0].banned_until) : null;
+      if (bannedUntil && bannedUntil > new Date()) return;
+
       const id = crypto.randomUUID();
       await pool.query(
         "INSERT INTO messages (id, kind, from_user_id, to_user_id, text) VALUES ($1, 'dm', $2, $3, $4)",
         [id, ws.user.id, toId, text]
       );
 
-      const item = { id, ts: new Date().toISOString(), fromId: ws.user.id, from: ws.user.name, toId, text };
+      const item = {
+        id,
+        ts: new Date().toISOString(),
+        fromId: ws.user.id,
+        from: ws.user.name,
+        toId,
+        text
+      };
 
       for (const [sock, info] of online.entries()) {
         if (info.id === toId || info.id === ws.user.id) {
@@ -385,8 +471,10 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (online.has(ws)) {
+      const left = online.get(ws);
       online.delete(ws);
       pushOnline();
+      broadcast({ type: "system", text: `${left.name} left` });
     }
   });
 });
