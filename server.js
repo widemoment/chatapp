@@ -150,8 +150,6 @@ function requireModApi(u, res) {
   return null;
 }
 
-/* ---------------- AUTH ---------------- */
-
 app.post("/api/signup", async (req, res) => {
   try {
     const email = cleanEmail(req.body?.email);
@@ -256,8 +254,6 @@ app.get("/api/me", async (req, res) => {
   });
 });
 
-/* ---------------- ACCOUNT ---------------- */
-
 app.post("/api/account/name", async (req, res) => {
   const token = clean(req.body?.token, 200);
   const newName = clean(req.body?.name, 24);
@@ -300,8 +296,6 @@ app.post("/api/account/password", async (req, res) => {
   await pool.query("UPDATE users SET pass_hash=$1 WHERE id=$2", [passHash, u.id]);
   res.json({ ok: true });
 });
-
-/* ---------------- ADMIN ---------------- */
 
 app.get("/api/admin/users", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
@@ -395,7 +389,6 @@ app.post("/api/admin/role", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* NEW: set country/flag for a user (mod+owner) */
 app.post("/api/admin/country", async (req, res) => {
   const token = clean(req.body?.token, 200);
   const targetId = Number(req.body?.userId);
@@ -410,8 +403,6 @@ app.post("/api/admin/country", async (req, res) => {
   await pool.query("UPDATE users SET country_code=$1 WHERE id=$2", [country, targetId]);
   res.json({ ok: true });
 });
-
-/* ---------------- WEBSOCKET ---------------- */
 
 wss.on("connection", (ws) => {
   ws.user = null;
@@ -573,3 +564,4 @@ main().catch((err) => {
   console.error("Startup failed:", err);
   process.exit(1);
 });
+
