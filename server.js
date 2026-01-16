@@ -14,9 +14,7 @@ const wss = new WebSocketServer({ server });
 app.use(express.json());
 app.use(express.static("public"));
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 const MOD_EMAILS = (process.env.MOD_EMAILS || "")
@@ -27,28 +25,16 @@ const MOD_EMAILS = (process.env.MOD_EMAILS || "")
 const online = new Map(); // ws -> { id, name, role, country, token }
 let peakOnline = 0;
 
-function clean(v, max) {
-  return String(v ?? "").trim().slice(0, max);
-}
-function cleanEmail(v) {
-  return clean(v, 120).toLowerCase();
-}
+function clean(v, max) { return String(v ?? "").trim().slice(0, max); }
+function cleanEmail(v) { return clean(v, 120).toLowerCase(); }
 function cleanCountry(v) {
   const s = clean(v, 3).toLowerCase();
   return /^[a-z0-9]{2,3}$/.test(s) ? s : "xx";
 }
-function okEmail(e) {
-  return e.includes("@") && e.includes(".") && e.length >= 6;
-}
-function okPassword(p) {
-  return typeof p === "string" && p.length >= 8;
-}
-function isOwner(u) {
-  return u?.role === "owner";
-}
-function isMod(u) {
-  return u?.role === "moderator" || u?.role === "owner";
-}
+function okEmail(e) { return e.includes("@") && e.includes(".") && e.length >= 6; }
+function okPassword(p) { return typeof p === "string" && p.length >= 8; }
+function isOwner(u) { return u?.role === "owner"; }
+function isMod(u) { return u?.role === "moderator" || u?.role === "owner"; }
 
 async function runSchema() {
   const sql = `
@@ -85,23 +71,16 @@ async function runSchema() {
   CREATE INDEX IF NOT EXISTS idx_sessions_last_seen ON sessions(last_seen);
   `;
   await pool.query(sql);
-
-  await pool.query(
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'"
-  );
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code TEXT NOT NULL DEFAULT 'xx'");
 }
 
 async function cleanupOldMessages() {
   await pool.query("DELETE FROM messages WHERE ts < NOW() - INTERVAL '1 hour'");
 }
-setInterval(() => {
-  cleanupOldMessages().catch(() => {});
-}, 15000);
+setInterval(() => { cleanupOldMessages().catch(() => {}); }, 15000);
 
 async function ensureRolesFromEnv() {
-  if (OWNER_EMAIL) {
-    await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
-  }
+  if (OWNER_EMAIL) await pool.query("UPDATE users SET role='owner' WHERE email=$1", [OWNER_EMAIL]);
   for (const em of MOD_EMAILS) {
     await pool.query("UPDATE users SET role='moderator' WHERE email=$1 AND role <> 'owner'", [em]);
   }
@@ -126,9 +105,7 @@ async function getUserByToken(token) {
 
 function snapshotOnline() {
   const list = [];
-  for (const v of online.values()) {
-    list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
-  }
+  for (const v of online.values()) list.push({ id: v.id, name: v.name, role: v.role, country: v.country });
   list.sort((a, b) => a.name.localeCompare(b.name));
   const current = list.length;
   if (current > peakOnline) peakOnline = current;
@@ -137,20 +114,17 @@ function snapshotOnline() {
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
-  for (const ws of online.keys()) {
-    if (ws.readyState === 1) ws.send(data);
-  }
+  for (const ws of online.keys()) if (ws.readyState === 1) ws.send(data);
 }
-
-function pushOnline() {
-  broadcast({ type: "online", ...snapshotOnline() });
-}
+function pushOnline() { broadcast({ type: "online", ...snapshotOnline() }); }
 
 function requireModApi(u, res) {
   if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
   if (!isMod(u)) return res.status(403).json({ ok: false, error: "not_allowed" });
   return null;
 }
+
+/* ---------- AUTH ---------- */
 
 app.post("/api/signup", async (req, res) => {
   try {
@@ -187,11 +161,9 @@ app.post("/api/login", async (req, res) => {
   try {
     const email = cleanEmail(req.body?.email);
     const password = String(req.body?.password ?? "");
+    const inferredCountry = cleanCountry(req.body?.country);
 
-    const q = await pool.query(
-      "SELECT id FROM users WHERE email=$1",
-      [email]
-    );
+    const q = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
     if (!q.rows.length) return res.status(401).json({ ok: false, error: "bad_login" });
 
     await ensureRolesFromEnv();
@@ -209,6 +181,11 @@ app.post("/api/login", async (req, res) => {
 
     if (!bcrypt.compareSync(password, u.pass_hash)) {
       return res.status(401).json({ ok: false, error: "bad_login" });
+    }
+
+    if ((u.country_code === "xx" || !u.country_code) && inferredCountry !== "xx") {
+      await pool.query("UPDATE users SET country_code=$1 WHERE id=$2", [inferredCountry, u.id]);
+      u.country_code = inferredCountry;
     }
 
     const token = crypto.randomBytes(24).toString("hex");
@@ -248,6 +225,8 @@ app.get("/api/me", async (req, res) => {
     }
   });
 });
+
+/* ---------- ACCOUNT ---------- */
 
 app.post("/api/account/name", async (req, res) => {
   const token = clean(req.body?.token, 200);
@@ -292,16 +271,7 @@ app.post("/api/account/password", async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/account/country", async (req, res) => {
-  const token = clean(req.body?.token, 200);
-  const country = cleanCountry(req.body?.country);
-
-  const u = await getUserByToken(token);
-  if (!u) return res.status(401).json({ ok: false, error: "not_logged_in" });
-
-  await pool.query("UPDATE users SET country_code=$1 WHERE id=$2", [country, u.id]);
-  res.json({ ok: true });
-});
+/* ---------- ADMIN ---------- */
 
 app.get("/api/admin/users", async (req, res) => {
   const token = clean(req.headers["x-token"], 200);
@@ -394,6 +364,8 @@ app.post("/api/admin/role", async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- WEBSOCKET ---------- */
+
 wss.on("connection", (ws) => {
   ws.user = null;
   ws.send(JSON.stringify({ type: "system", text: "connected" }));
@@ -405,10 +377,7 @@ wss.on("connection", (ws) => {
     if (msg.type === "auth") {
       const token = clean(msg.token, 200);
       const u = await getUserByToken(token);
-      if (!u) {
-        ws.send(JSON.stringify({ type: "auth_error", text: "bad token" }));
-        return;
-      }
+      if (!u) { ws.send(JSON.stringify({ type: "auth_error", text: "bad token" })); return; }
 
       await ensureRolesFromEnv();
 
