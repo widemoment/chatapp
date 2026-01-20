@@ -486,73 +486,25 @@ wss.on("connection", (ws) => {
 
     if (!ws.user) return;
 
-    if(msg.type === "chat") {
-
-      if (ws.user.role === "owner" || ws.user.role === "moderator") {
-        lastMsgAt.set(ws.user.id, Date.now());
-      }
-
+    if (msg.type === "chat") {
       const text = clean(msg.text, 500);
-      if(!text) return;
+      if (!text) return;
 
-      const uid = ws.user.id;
-      if(text.toLowerCase().startsWith("/cd")) {
-        const parts = text.trim().split(/\s+/);
-        const sec = Number(parts[1]);
-
-        if(!Number.isFinite(sec) || sec < 1 || sec > 60) {
-          ws.send(JSON.stringify({
-            type: "system:",
-            text: "use: /cd 1   (1 => 1 message / sec, maximum => 60)"
-          }));
-          return;
-        }
-        cdSeconds.set(uid, sec);
-        ws.send(JSON.stringify({
-          type: "system",
-          text: 'cooldown: 1 message every ${sec} second(s)'
-        }));
-        return;
-      }
-
-      const cd = cdSeconds.get(uid) || 0;
-      if (cd > 0) {
-        const last = lastMsgAt.get(uid) || 0;
-        const now = Date.now();
-        const diff = (now - last) / 1000;
-
-        if (diff < cd) {
-          const wait = Math.ceil(cd - diff);
-          ws.send(JSON.stringify({
-            type: "system",
-            text: 'cooldown is on: wait ${wait}s'
-          }));
-          return;
-        }
-      }
-      const q = await pool.query(
-        "SELECT muted_until, banned_until FROM users WHERE id=$1",
-        [uid]
-      );
-
-      const mutedUntil = q.rows[0]?.muted_until ?  new Date(q.rows[0].muted_until) : null;
-      const bannedUntil = q.rows[0]?.banned_until ?  new Date(q.rows[0].banned_until) : null;
+      const q = await pool.query("SELECT muted_until, banned_until FROM users WHERE id=$1", [ws.user.id]);
+      const mutedUntil = q.rows[0]?.muted_until ? new Date(q.rows[0].muted_until) : null;
+      const bannedUntil = q.rows[0]?.banned_until ? new Date(q.rows[0].banned_until) : null;
 
       if (bannedUntil && bannedUntil > new Date()) return;
 
-      if (mutedUntil && bannedUntil > new Date()) {
-        ws.send(JSON.stringify({
-          type: "system",
-          text: 'muted until ${mutedUntil.toLocaleString()}'
-        }));
+      if (mutedUntil && mutedUntil > new Date()) {
+        ws.send(JSON.stringify({ type: "system", text: `muted until ${mutedUntil.toLocaleString()}` }));
         return;
       }
-      lastMsgAt.set(uid, DataTransfer.now());
-      
+
       const id = crypto.randomUUID();
       await pool.query(
-        "INSERT INTO message (id, kind, from_user_id, text) VALUES ($1, 'general', $2, $3)",
-        [id, uid, text]
+        "INSERT INTO messages (id, kind, from_user_id, text) VALUES ($1, 'general', $2, $3)",
+        [id, ws.user.id, text]
       );
 
       broadcast({
@@ -567,7 +519,6 @@ wss.on("connection", (ws) => {
           text
         }
       });
-
       return;
     }
 
