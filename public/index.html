@@ -11,19 +11,22 @@
       <h1>Chat</h1>
 
       <section class="card" id="auth">
-        <div class="row">
-          <input id="email" placeholder="email" autocomplete="email" />
+        <div class="authHeader">
+          <h2 id="authTitle" style="flex: 1; margin: 0;">Login</h2>
+          <button id="toggle" class="toggleBtn">Switch to Sign up</button>
         </div>
         <div class="row">
-          <input id="password" type="password" placeholder="password (8+ chars)" autocomplete="current-password" />
-        </div>
-        <div class="row" id="nameRow">
-          <input id="name" placeholder="username (signup only)" autocomplete="nickname" />
+          <input id="email" placeholder="Email" autocomplete="email" />
         </div>
         <div class="row">
+          <input id="password" type="password" placeholder="Password (8+ chars)" autocomplete="current-password" />
+        </div>
+        <div class="row hidden" id="nameRow">
+          <input id="name" placeholder="Username (signup only)" autocomplete="nickname" />
+        </div>
+        <div class="row buttonRow">
           <button id="login">Login</button>
-          <button id="signup">Sign up</button>
-          <button id="toggle">Switch to Login</button>
+          <button id="signup" class="hidden">Sign up</button>
         </div>
         <div class="small" id="authMsg"></div>
       </section>
@@ -49,7 +52,7 @@
             </div>
 
             <div class="row">
-              <input id="text" placeholder="message" autocomplete="off" />
+              <input id="text" placeholder="Message" autocomplete="off" />
               <button id="send">Send</button>
             </div>
 
@@ -58,15 +61,15 @@
               <div class="small">Username can be changed once per 30 days.</div>
 
               <div class="row">
-                <input id="newName" placeholder="new username" />
+                <input id="newName" placeholder="New Username" />
                 <button id="changeName">Change name</button>
               </div>
 
               <div class="row">
-                <input id="curPass" type="password" placeholder="current password" autocomplete="current-password" />
+                <input id="curPass" type="password" placeholder="Current Password" autocomplete="current-password" />
               </div>
               <div class="row">
-                <input id="newPass" type="password" placeholder="new password (8+ chars)" autocomplete="new-password" />
+                <input id="newPass" type="password" placeholder="New Password (8+ chars)" autocomplete="new-password" />
                 <button id="changePass">Change password</button>
               </div>
 
