@@ -1,19 +1,76 @@
-html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; font-size: 18px; }
+html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 18px; background-color: #ffffff; }
 body { display: flex; justify-content: center; align-items: center; }
 .wrap { width: min(1100px, 95vw); }
-h1 { text-align: center; margin: 0 0 14px 0; }
+h1 { text-align: center; margin: 0 0 14px 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Arial, sans-serif; font-weight: 600; letter-spacing: -0.5px; }
 
-.card { border: 1px solid #ccc; padding: 16px; }
-.card2 { border: 1px solid #ddd; padding: 12px; margin-top: 12px; }
-.hidden { display: none; }
+@keyframes slideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
 
-.row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-input { font-size: 18px; padding: 10px; flex: 1; min-width: 220px; }
-button { font-size: 18px; padding: 10px 14px; cursor: pointer; }
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bubblePopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes buttonPress {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 20px; padding: 32px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04); }
+.card2 { border: 1px solid #ddd; padding: 12px; margin-top: 12px; border-radius: 12px; }
+.hidden { display: none !important; }
+
+.row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+input { font-size: 18px; padding: 12px 14px; flex: 1; min-width: 220px; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 12px; background-color: rgba(255, 255, 255, 0.8); font-family: inherit; }
+input:focus { outline: none; border-color: rgba(0, 0, 0, 0.12); background-color: rgba(255, 255, 255, 0.95); }
+button { font-size: 18px; padding: 11px 16px; cursor: pointer; border: 1.5px solid rgba(0, 0, 0, 0.15); border-radius: 10px; background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-weight: 500; transition: all 0.2s ease; color: #000; font-family: inherit; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+button:hover { background: #000; border-color: #000; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+button:active { animation: buttonPress 0.2s ease; }
+button.active { background: #000; border-color: #000; color: #fff; }
 
 .small { font-size: 14px; opacity: 0.8; margin-top: 8px; }
 
-.feed { border: 1px solid #ddd; height: 52vh; overflow-y: auto; padding: 10px; }
+.authHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.toggleBtn { width: auto; padding: 8px 12px; font-size: 14px; }
+.buttonRow { justify-content: center; gap: 12px; margin-top: 20px; }
+
+.top { margin-bottom: 16px; }
+
+.feed { border: 1px solid #ddd; height: 52vh; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; background-color: #f5f5f5; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+.feed.slideOut { animation: slideOutLeft 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
+.feed.slideIn { animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
 .layout { display: grid; grid-template-columns: 1fr 320px; gap: 12px; }
 
 .side { border: 1px solid #ddd; padding: 10px; height: 52vh; overflow-y: auto; }
@@ -22,7 +79,103 @@ button { font-size: 18px; padding: 10px 14px; cursor: pointer; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .itemBtn { text-align: left; padding: 8px; font-size: 16px; }
 
-.msg { padding: 6px 4px; border-bottom: 1px solid #eee; }
+.msg { 
+  padding: 10px 14px; 
+  border-radius: 18px; 
+  word-wrap: break-word; 
+  display: inline-block;
+  width: fit-content;
+  max-width: 75%;
+  background-color: #E5E5EA;
+  color: #000;
+  border: none;
+  border-bottom: none;
+  font-size: 16px;
+  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.msg.isSystem {
+  background-color: transparent;
+  color: #999;
+  font-size: 12px;
+  padding: 4px 0;
+  display: block;
+  text-align: center;
+  width: 100%;
+  border-radius: 0;
+  max-width: none;
+}
+
+.msg.isUser {
+  background-color: #007AFF;
+  color: white;
+  margin-left: auto;
+  margin-right: 0;
+  display: block;
+}
+
+.messageUsername {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  padding: 0 2px;
+}
+
+.messageUsername.dmLabel {
+  font-weight: 700;
+  color: #333;
+}
+
+.messageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+  padding: 0 0;
+}
+
+.messageTime {
+  font-size: 12px;
+  color: #999;
+  margin-left: 8px;
+}
+
+.messageTimeBottom {
+  font-size: 12px;
+  color: #333;
+  margin-top: 4px;
+  text-align: right;
+  opacity: 1;
+  display: block;
+  width: auto;
+}
+
+.userBubbleWithTime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.userBubbleWithTime .msg {
+  margin-bottom: 0;
+}
+
+.messageGroupWrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.messageGroupWrapper.isUserDM {
+  align-items: flex-end;
+}
+
+.msg.isUser ~ .messageUsername {
+  display: none;
+}
 
 .nameLine { display: inline-flex; align-items: center; gap: 8px; }
 .flag { width: 18px; height: 12px; image-rendering: auto; border: 1px solid #00000022; }
@@ -32,6 +185,84 @@ button { font-size: 18px; padding: 10px 14px; cursor: pointer; }
 .role-moderator { color: #7a5cff; }
 .role-enthusiast { color: #1e9b3b; }
 
+#me .nameLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+#me .nameLine img {
+  order: 1;
+}
+
+#me .nameLine span:nth-child(2) {
+  order: 2;
+  font-weight: 500;
+  flex: 1;
+}
+
+#me .nameLine span:nth-child(3) {
+  order: 4;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+
+.userListItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.userListSeparator {
+  width: 1px;
+  height: 16px;
+  background-color: #ddd;
+}
+
+.userListName {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userListSpacer {
+  flex: 1;
+}
+
+.userListId {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.userListRoleBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: white;
+}
+
+.userListRoleBadge.role-owner {
+  background-color: #ff6a00;
+}
+.userListRoleBadge.role-moderator {
+  background-color: #7a5cff;
+}
+.userListRoleBadge.role-enthusiast {
+  background-color: #1e9b3b;
+}
 .userRow {
   border-top: 1px solid #00000022;
   padding: 8px 0;
