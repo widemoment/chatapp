@@ -1,3 +1,4 @@
+//import { seedWelcome } from "./welcome.js"; -->made for testing the system message for the front end
 import express from "express";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -574,6 +575,7 @@ const PORT = process.env.PORT || 3000;
 async function main() {
   await runSchema();
   await ensureRolesFromEnv();
+  //await seedWelcome(pool); --> connected to /chatapp/welcome.js --> made for testing the front end
   server.listen(PORT);
 }
 
@@ -581,3 +583,4 @@ main().catch((err) => {
   console.error("Startup failed:", err);
   process.exit(1);
 });
+
