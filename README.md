@@ -1,4 +1,4 @@
-# chatapp
+# Realtime chatting app
 ## Requirements
 - Node.js 18+
 - PostgreSQL 14+ (or any recent version)
