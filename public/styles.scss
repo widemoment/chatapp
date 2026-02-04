@@ -1,0 +1,766 @@
+$color-primary: #007AFF;
+$color-text-primary: #333;
+$color-text-secondary: #666;
+$color-text-muted: #999;
+$color-background: #ffffff;
+$color-background-light: #f5f5f5;
+$color-border: #ddd;
+$color-border-light: #00000022;
+$color-shadow-light: #00000008;
+$color-shadow-medium: #00000004;
+
+$color-role-owner: #ff6a00;
+$color-role-moderator: #7a5cff;
+$color-role-enthusiast: #1e9b3b;
+
+$dark-background: #0a0a0a;
+$dark-text-primary: #ffffff;
+$dark-text-secondary: #b0b0b0;
+$dark-text-muted: #808080;
+$dark-background-light: #1a1a1a;
+$dark-border: #333333;
+$dark-border-light: #ffffff22;
+$dark-glow-purple: rgba(168, 85, 247, 0.3);
+$dark-glow-purple-intense: rgba(168, 85, 247, 0.15);
+
+$size-font-base: 18px;
+$size-font-small: 14px;
+$size-font-tiny: 12px;
+$size-font-xs: 13px;
+$size-padding-base: 12px;
+$size-padding-large: 32px;
+$size-border-radius-lg: 20px;
+$size-border-radius-md: 12px;
+$size-border-radius-sm: 10px;
+$size-border-radius-bubble: 18px;
+$size-border-radius-badge: 50%;
+
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+$font-family-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Arial, sans-serif;
+
+@keyframes slideOutLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bubblePopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes buttonPress {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+
+
+
+@mixin glass-effect {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+@mixin glass-effect-dark {
+  background: rgba(15, 15, 15, 0.3);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+@mixin glass-effect-button {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03),
+    0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+@mixin flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@mixin button-base {
+  font-size: $size-font-base;
+  padding: 11px 16px;
+  cursor: pointer;
+  border-radius: $size-border-radius-sm;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  color: $color-text-primary;
+  font-family: inherit;
+}
+
+@mixin role-colors {
+  &.role-owner {
+    color: $color-role-owner;
+  }
+  &.role-moderator {
+    color: $color-role-moderator;
+  }
+  &.role-enthusiast {
+    color: $color-role-enthusiast;
+  }
+}
+
+@mixin role-bg-colors {
+  &.role-owner {
+    background-color: $color-role-owner;
+  }
+  &.role-moderator {
+    background-color: $color-role-moderator;
+  }
+  &.role-enthusiast {
+    background-color: $color-role-enthusiast;
+  }
+}
+
+
+
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: $font-family-base;
+  font-size: $size-font-base;
+  background-color: $color-background;
+}
+
+body {
+  @include flex-center;
+}
+
+.wrap {
+  width: min(1100px, 95vw);
+}
+
+h1 {
+  text-align: center;
+  margin: 0 0 14px 0;
+  font-family: $font-family-display;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+
+
+
+.hidden {
+  display: none !important;
+}
+
+.small {
+  font-size: $size-font-small;
+  opacity: 0.8;
+  margin-top: 8px;
+}
+
+
+
+
+.card {
+  @include glass-effect;
+  border-radius: $size-border-radius-lg;
+  padding: $size-padding-large;
+  position: relative;
+}
+
+.card2 {
+  border: 1px solid $color-border;
+  padding: $size-padding-base;
+  margin-top: $size-padding-base;
+  border-radius: $size-border-radius-md;
+}
+
+
+
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+input {
+  font-size: $size-font-base;
+  padding: $size-padding-base 14px;
+  flex: 1;
+  min-width: 220px;
+  border: 1px solid $color-border-light;
+  border-radius: $size-border-radius-md;
+  background-color: rgba(255, 255, 255, 0.8);
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: rgba(0, 0, 0, 0.12);
+    background-color: rgba(255, 255, 255, 0.95);
+  }
+}
+
+button {
+  @include button-base;
+  @include glass-effect-button;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: translateY(-1px);
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+      0 12px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  &:active {
+    animation: buttonPress 0.2s ease;
+  }
+
+  &.active {
+    background: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+      0 8px 24px rgba(0, 0, 0, 0.1);
+    color: $color-text-primary;
+  }
+}
+
+
+
+
+.authHeader {
+  @include flex-between;
+  margin-bottom: 16px;
+}
+
+.toggleBtn {
+  width: auto;
+  padding: 8px 12px;
+  font-size: $size-font-xs;
+}
+
+.buttonRow {
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.top {
+  margin-bottom: 16px;
+}
+
+
+
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 12px;
+}
+
+.feed {
+  border: 1px solid $color-border;
+  height: 52vh;
+  overflow-y: auto;
+  padding: $size-padding-base;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: $color-background-light;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  border-radius: $size-border-radius-md;
+
+  &.slideOut {
+    animation: slideOutLeft 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+
+  &.slideIn {
+    animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+.side {
+  border: 1px solid $color-border;
+  padding: 10px;
+  height: 52vh;
+  overflow-y: auto;
+  border-radius: $size-border-radius-md;
+}
+
+.sideTitle {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itemBtn {
+  text-align: left;
+  padding: 8px;
+  font-size: 16px;
+}
+
+
+
+
+.msg {
+  padding: 10px 14px;
+  border-radius: $size-border-radius-bubble;
+  word-wrap: break-word;
+  display: inline-block;
+  width: fit-content;
+  max-width: 75%;
+  background-color: #E5E5EA;
+  color: $color-text-primary;
+  border: none;
+  font-size: 16px;
+  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  &.isSystem {
+    background-color: transparent;
+    color: $color-text-muted;
+    font-size: $size-font-tiny;
+    padding: 4px 0;
+    display: block;
+    text-align: center;
+    width: 100%;
+    border-radius: 0;
+    max-width: none;
+  }
+
+  &.isUser {
+    background-color: $color-primary;
+    color: white;
+    margin-left: auto;
+    margin-right: 0;
+    display: block;
+  }
+}
+
+.messageGroupWrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  &.isUserDM {
+    align-items: flex-end;
+  }
+}
+
+.messageUsername {
+  font-size: $size-font-xs;
+  font-weight: 600;
+  color: $color-text-primary;
+  margin-bottom: 4px;
+  padding: 0 2px;
+
+  &.dmLabel {
+    font-weight: 700;
+  }
+}
+
+.messageHeader {
+  @include flex-between;
+  margin-bottom: 2px;
+  padding: 0;
+}
+
+.messageTime {
+  font-size: $size-font-tiny;
+  color: $color-text-muted;
+  margin-left: 8px;
+}
+
+.messageTimeBottom {
+  font-size: $size-font-tiny;
+  color: $color-text-primary;
+  margin-top: 4px;
+  text-align: right;
+  opacity: 1;
+  display: block;
+  width: auto;
+}
+
+.userBubbleWithTime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+
+  .msg {
+    margin-bottom: 0;
+  }
+}
+
+
+
+
+.nameLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flag {
+  width: 18px;
+  height: 12px;
+  image-rendering: auto;
+  border: 1px solid $color-border-light;
+}
+
+.roleTag {
+  font-weight: bold;
+  @include role-colors;
+}
+
+#me .nameLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+
+  img {
+    order: 1;
+  }
+
+  span:nth-child(2) {
+    order: 2;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  span:nth-child(3) {
+    order: 4;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: $size-font-xs;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+  }
+}
+
+.userListItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.userListSeparator {
+  width: 1px;
+  height: 16px;
+  background-color: $color-border;
+}
+
+.userListName {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userListSpacer {
+  flex: 1;
+}
+
+.userListId {
+  font-size: $size-font-xs;
+  color: $color-text-secondary;
+  white-space: nowrap;
+}
+
+.userListRoleBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: $size-border-radius-badge;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: $size-font-tiny;
+  color: white;
+  @include role-bg-colors;
+}
+
+
+
+
+.userRow {
+  border-top: 1px solid $color-border-light;
+  padding: 8px 0;
+
+  .row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+
+
+
+body.dark-mode {
+  background-color: $dark-background;
+  color: $dark-text-primary;
+
+
+  .wrap,
+  body {
+    background-color: $dark-background;
+  }
+
+
+  .card#app {
+    background: rgba(15, 15, 15, 0.3);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 
+      0 0 120px $dark-glow-purple,
+      0 0 80px rgba(168, 85, 247, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.6);
+  }
+
+
+  .card#app {
+    background: rgba(15, 15, 15, 0.3);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 
+      0 0 120px $dark-glow-purple,
+      0 0 80px rgba(168, 85, 247, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.6);
+  }
+
+
+  .feed,
+  .side {
+    @include glass-effect-dark;
+  }
+
+
+  .name,
+  .title,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: $dark-text-primary;
+  }
+
+  .info,
+  .timestamp,
+  .subtext {
+    color: $dark-text-secondary;
+  }
+
+  .muted {
+    color: $dark-text-muted;
+  }
+
+
+  .border-top,
+  .border-bottom {
+    border-color: $dark-border;
+  }
+
+  hr {
+    border-color: $dark-border;
+  }
+
+
+  input,
+  textarea,
+  select {
+    background-color: $dark-background-light;
+    color: $dark-text-primary;
+    border-color: $dark-border;
+
+    &::placeholder {
+      color: $dark-text-muted;
+    }
+  }
+
+
+  button {
+    @include glass-effect-button;
+    color: $dark-text-primary;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.35);
+      box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+        0 8px 24px rgba(168, 85, 247, 0.15);
+    }
+
+    &.active {
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    }
+  }
+
+
+  .msg {
+    color: $dark-text-primary;
+
+    &.isSystem {
+      background-color: transparent;
+      color: $dark-text-muted;
+    }
+
+    &.in {
+      background-color: #4a4a4a;
+      color: $dark-text-primary;
+      padding: 10px 14px;
+      display: inline-block;
+      width: fit-content;
+      max-width: 75%;
+      border-radius: $size-border-radius-bubble;
+    }
+
+    &.out,
+    &.isUser {
+      background-color: $color-role-moderator;
+      color: white;
+    }
+
+    .timestamp {
+      color: $dark-text-muted;
+    }
+  }
+
+
+  button:not(#modeToggle) {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: $dark-text-primary !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    &.active {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+  }
+
+
+  .nameLine,
+  .name {
+    color: $dark-text-primary;
+  }
+
+  .roleBadge {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+
+  .userItem {
+    border-top: 1px solid $dark-border;
+    color: $dark-text-primary;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    &.active {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+
+  .viewContainer {
+    background-color: transparent;
+    color: $dark-text-primary;
+  }
+
+
+  .accountContent {
+    color: $dark-text-primary;
+
+    label {
+      color: $dark-text-secondary;
+    }
+  }
+
+
+  #modeToggle {
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+
+    &:hover {
+      background: rgba(168, 85, 247, 0.3);
+      box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 20px rgba(168, 85, 247, 0.2);
+    }
+  }
+}
