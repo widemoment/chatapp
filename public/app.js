@@ -21,6 +21,7 @@ const adminLink = $("adminLink");
 const generalBtn = $("generalBtn");
 const dmBtn = $("dmBtn");
 const accountBtn = $("accountBtn");
+const themesBtn = $("themesBtn");
 
 const feed = $("feed");
 const text = $("text");
@@ -33,6 +34,7 @@ const onlineStats = $("onlineStats");
 const onlineList = $("onlineList");
 
 const accountBox = $("account");
+const themesBox = $("themes");
 const newName = $("newName");
 const changeName = $("changeName");
 const curPass = $("curPass");
@@ -40,12 +42,22 @@ const newPass = $("newPass");
 const changePass = $("changePass");
 const accountMsg = $("accountMsg");
 
+const defaultTheme = $("defaultTheme");
+const funTheme = $("funTheme");
+const madTheme = $("madTheme");
+const ferrariTheme = $("ferrariTheme");
+const mclarenTheme = $("mclarenTheme");
+const mercedesTheme = $("mercedesTheme");
+const redbullTheme = $("redbullTheme");
+const astonmartinTheme = $("astonmartinTheme");
+
 const hint = $("hint");
 
 let mode = "login";
 let view = "general";
 let token = localStorage.getItem("token") || null;
 let me = null;
+let currentTheme = localStorage.getItem("theme") || "default";
 
 const proto = location.protocol === "https:" ? "wss" : "ws";
 let ws = null;
@@ -77,14 +89,38 @@ function saveDmToCache(msg) {
 }
 
 function trackMessageTimestamp(element, timestamp) {
+  console.log("trackMessageTimestamp - age:", Date.now() - timestamp, "expiry:", MESSAGE_EXPIRY_TIME - (Date.now() - timestamp));
   messageTimestamps.set(element, timestamp);
   
-  setTimeout(() => {
-    if (element.parentNode) {
-      element.parentNode.remove();
-    }
-    messageTimestamps.delete(element);
-  }, MESSAGE_EXPIRY_TIME);
+  const messageAge = Date.now() - timestamp;
+  const timeUntilExpiry = MESSAGE_EXPIRY_TIME - messageAge;
+  
+  if (timeUntilExpiry > 0) {
+    setTimeout(() => {
+      if (element.parentNode) {
+        element.remove();
+      }
+      messageTimestamps.delete(element);
+      
+      const messageText = element.textContent;
+      for (let i = dmCache.length - 1; i >= 0; i--) {
+        if (dmCache[i].text && messageText.includes(dmCache[i].text)) {
+          dmCache.splice(i, 1);
+        }
+      }
+      try {
+        localStorage.setItem("dm_cache", JSON.stringify(dmCache));
+      } catch (e) {
+        console.error("Failed to update DM cache:", e);
+      }
+    }, timeUntilExpiry);
+  } else {
+    console.warn("Message already expired but keeping it visible");
+    // if (element.parentNode) {
+    //   element.remove();
+    // }
+    // messageTimestamps.delete(element);
+  }
 }
 
 function displayCachedDms() {
@@ -285,6 +321,8 @@ function addLine(parts) {
 }
 
 function addBubbleMessage(text, userId, isSystem, username, timestamp) {
+  console.log("addBubbleMessage called with:", {text, userId, isSystem, username, timestamp});
+  
   const div = document.createElement("div");
   div.className = "msg";
   if (isSystem) {
@@ -299,7 +337,9 @@ function addBubbleMessage(text, userId, isSystem, username, timestamp) {
       div.classList.add("isUser");
       
       const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+      console.log("timeStr:", timeStr);
       if (timeStr) {
+        console.log("Creating user message container with timestamp");
         const container = document.createElement("div");
         container.className = "messageGroupWrapper userMessageWrapper";
         
@@ -314,14 +354,17 @@ function addBubbleMessage(text, userId, isSystem, username, timestamp) {
         bubbleWithTime.appendChild(timeEl);
         
         container.appendChild(bubbleWithTime);
+        console.log("Appending user container to feed");
         feed.appendChild(container);
         trackMessageTimestamp(container, timestamp || Date.now());
         feed.scrollTop = feed.scrollHeight;
+        console.log("User message added successfully");
         return;
       }
     } else {
       console.log("NOT adding isUser class - this is from another user");
       if (username) {
+        console.log("Creating other user message container");
         const headerContainer = document.createElement("div");
         headerContainer.className = "messageHeader";
         
@@ -335,13 +378,16 @@ function addBubbleMessage(text, userId, isSystem, username, timestamp) {
         container.className = "messageGroupWrapper";
         container.appendChild(headerContainer);
         container.appendChild(div.cloneNode(true));
+        console.log("Appending other user container to feed");
         feed.appendChild(container);
         trackMessageTimestamp(container, timestamp || Date.now());
         feed.scrollTop = feed.scrollHeight;
+        console.log("Other user message added successfully");
         return;
       }
     }
   }
+  console.log("Fallback: appending div directly to feed");
   feed.appendChild(div);
   trackMessageTimestamp(div, timestamp || Date.now());
   feed.scrollTop = feed.scrollHeight;
@@ -354,31 +400,52 @@ function setView(v) {
   dmBtn.classList.remove("active");
   accountBtn.classList.remove("active");
   
+  const sidebar = document.querySelector('.layout > div:last-child');
+  
   const isFeedCurrentlyVisible = !feed.classList.contains("hidden");
-  if (isFeedCurrentlyVisible && v === "account") {
+  if (isFeedCurrentlyVisible && (v === "account" || v === "themes")) {
     feed.classList.add("slideOut");
+    if (sidebar) {
+      sidebar.style.opacity = '0';
+      sidebar.style.transform = 'translateX(20px) scale(0.95)';
+    }
     setTimeout(() => {
       feed.classList.remove("slideOut");
       feed.classList.add("hidden");
-      accountBtn.classList.add("active");
+      if (sidebar) sidebar.classList.add("hidden");
+      if (v === "account") {
+        accountBtn.classList.add("active");
+        accountBox.classList.remove("hidden");
+        themesBox.classList.add("hidden");
+      } else if (v === "themes") {
+        themesBox.classList.remove("hidden");
+        accountBox.classList.add("hidden");
+      }
       dmToRow.classList.add("hidden");
-      accountBox.classList.remove("hidden");
       text.parentElement.classList.add("hidden");
-    }, 400);
+    }, 500);
     return;
   }
   
   if (v === "general" || v === "dm") {
     view = "general";
-    generalBtn.classList.add("active");
     
     if (feed.classList.contains("hidden")) {
       feed.classList.remove("hidden");
       feed.classList.add("slideIn");
-      setTimeout(() => feed.classList.remove("slideIn"), 400);
+      setTimeout(() => feed.classList.remove("slideIn"), 500);
+      
+      if (sidebar) {
+        sidebar.classList.remove("hidden");
+        setTimeout(() => {
+          sidebar.style.opacity = '1';
+          sidebar.style.transform = 'translateX(0) scale(1)';
+        }, 50);
+      }
     }
     
     accountBox.classList.add("hidden");
+    themesBox.classList.add("hidden");
     text.parentElement.classList.remove("hidden");
     
     if (v === "dm") {
@@ -392,7 +459,15 @@ function setView(v) {
     accountBtn.classList.add("active");
     dmToRow.classList.add("hidden");
     accountBox.classList.remove("hidden");
+    themesBox.classList.add("hidden");
     text.parentElement.classList.add("hidden");
+    if (sidebar) sidebar.classList.add("hidden");
+  } else if (v === "themes") {
+    dmToRow.classList.add("hidden");
+    themesBox.classList.remove("hidden");
+    accountBox.classList.add("hidden");
+    text.parentElement.classList.add("hidden");
+    if (sidebar) sidebar.classList.add("hidden");
   }
   
   hint.textContent = view === "general" && dmToRow.classList.contains("hidden") === false
@@ -402,6 +477,142 @@ function setView(v) {
 
 generalBtn.onclick = () => setView("general");
 dmBtn.onclick = () => setView("dm");
+accountBtn.onclick = () => setView("account");
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  localStorage.setItem("theme", theme);
+  
+  defaultTheme.classList.remove("active");
+  funTheme.classList.remove("active");
+  madTheme.classList.remove("active");
+  ferrariTheme.classList.remove("active");
+  mclarenTheme.classList.remove("active");
+  mercedesTheme.classList.remove("active");
+  redbullTheme.classList.remove("active");
+  astonmartinTheme.classList.remove("active");
+  
+  document.body.classList.remove("theme-fun", "theme-mad", "theme-ferrari", "theme-mclaren", "theme-mercedes", "theme-redbull", "theme-astonmartin");
+  
+  if (theme === "fun") {
+    funTheme.classList.add("active");
+    document.body.classList.add("theme-fun");
+  } else if (theme === "mad") {
+    madTheme.classList.add("active");
+    document.body.classList.add("theme-mad");
+  } else if (theme === "ferrari") {
+    ferrariTheme.classList.add("active");
+    document.body.classList.add("theme-ferrari");
+  } else if (theme === "mclaren") {
+    mclarenTheme.classList.add("active");
+    document.body.classList.add("theme-mclaren");
+  } else if (theme === "mercedes") {
+    mercedesTheme.classList.add("active");
+    document.body.classList.add("theme-mercedes");
+  } else if (theme === "redbull") {
+    redbullTheme.classList.add("active");
+    document.body.classList.add("theme-redbull");
+  } else if (theme === "astonmartin") {
+    astonmartinTheme.classList.add("active");
+    document.body.classList.add("theme-astonmartin");
+  } else {
+    defaultTheme.classList.add("active");
+  }
+  
+  updateThemeText(theme);
+}
+
+function updateThemeText(theme) {
+  const h1 = document.querySelector("h1");
+  const generalBtn = $("generalBtn");
+  const accountBtn = $("accountBtn");
+  const onlineTitle = document.querySelector(".side .sideTitle");
+  const ferrariLogo = $("ferrariLogo");
+  const mclarenLogo = $("mclarenLogo");
+  const mercedesLogo = $("mercedesLogo");
+  const redbullLogo = $("redbullLogo");
+  const astonmartinLogo = $("astonmartinLogo");
+  
+  if (theme === "ferrari") {
+    const textNode = Array.from(h1.childNodes).find(node => node.nodeType === 3);
+    if (textNode) textNode.textContent = "Scuderia Ferrari Chat";
+    generalBtn.textContent = "Team Radio";
+    accountBtn.textContent = "Pits";
+    if (onlineTitle) onlineTitle.textContent = "On Track";
+    if (ferrariLogo) ferrariLogo.classList.remove("hidden");
+    if (mclarenLogo) mclarenLogo.classList.add("hidden");
+    if (mercedesLogo) mercedesLogo.classList.add("hidden");
+    if (redbullLogo) redbullLogo.classList.add("hidden");
+    if (astonmartinLogo) astonmartinLogo.classList.add("hidden");
+  } else if (theme === "mclaren") {
+    const textNode = Array.from(h1.childNodes).find(node => node.nodeType === 3);
+    if (textNode) textNode.textContent = "McLaren Chat";
+    generalBtn.textContent = "Team Radio";
+    accountBtn.textContent = "Pits";
+    if (onlineTitle) onlineTitle.textContent = "On Track";
+    if (ferrariLogo) ferrariLogo.classList.add("hidden");
+    if (mclarenLogo) mclarenLogo.classList.remove("hidden");
+    if (mercedesLogo) mercedesLogo.classList.add("hidden");
+    if (redbullLogo) redbullLogo.classList.add("hidden");
+    if (astonmartinLogo) astonmartinLogo.classList.add("hidden");
+  } else if (theme === "mercedes") {
+    const textNode = Array.from(h1.childNodes).find(node => node.nodeType === 3);
+    if (textNode) textNode.textContent = "Mercedes AMG Petronas Chat";
+    generalBtn.textContent = "Team Radio";
+    accountBtn.textContent = "Pits";
+    if (onlineTitle) onlineTitle.textContent = "On Track";
+    if (ferrariLogo) ferrariLogo.classList.add("hidden");
+    if (mclarenLogo) mclarenLogo.classList.add("hidden");
+    if (mercedesLogo) mercedesLogo.classList.remove("hidden");
+    if (redbullLogo) redbullLogo.classList.add("hidden");
+    if (astonmartinLogo) astonmartinLogo.classList.add("hidden");
+  } else if (theme === "redbull") {
+    const textNode = Array.from(h1.childNodes).find(node => node.nodeType === 3);
+    if (textNode) textNode.textContent = "Red Bull Racing Chat";
+    generalBtn.textContent = "Team Radio";
+    accountBtn.textContent = "Pits";
+    if (onlineTitle) onlineTitle.textContent = "On Track";
+    if (ferrariLogo) ferrariLogo.classList.add("hidden");
+    if (mclarenLogo) mclarenLogo.classList.add("hidden");
+    if (mercedesLogo) mercedesLogo.classList.add("hidden");
+    if (redbullLogo) redbullLogo.classList.remove("hidden");
+    if (astonmartinLogo) astonmartinLogo.classList.add("hidden");
+  } else if (theme === "astonmartin") {
+    const textNode = Array.from(h1.childNodes).find(node => node.nodeType === 3);
+    if (textNode) textNode.textContent = "Aston Martin Aramco Chat";
+    generalBtn.textContent = "Team Radio";
+    accountBtn.textContent = "Pits";
+    if (onlineTitle) onlineTitle.textContent = "On Track";
+    if (ferrariLogo) ferrariLogo.classList.add("hidden");
+    if (mclarenLogo) mclarenLogo.classList.add("hidden");
+    if (mercedesLogo) mercedesLogo.classList.add("hidden");
+    if (redbullLogo) redbullLogo.classList.add("hidden");
+    if (astonmartinLogo) astonmartinLogo.classList.remove("hidden");
+  } else {
+    const textNode = Array.from(h1.childNodes).find(node => node.nodeType === 3);
+    if (textNode) textNode.textContent = "Chat";
+    generalBtn.textContent = "General";
+    accountBtn.textContent = "Account";
+    if (onlineTitle) onlineTitle.textContent = "Online";
+    if (ferrariLogo) ferrariLogo.classList.add("hidden");
+    if (mclarenLogo) mclarenLogo.classList.add("hidden");
+    if (mercedesLogo) mercedesLogo.classList.add("hidden");
+    if (redbullLogo) redbullLogo.classList.add("hidden");
+    if (astonmartinLogo) astonmartinLogo.classList.add("hidden");
+  }
+}
+
+defaultTheme.onclick = () => applyTheme("default");
+funTheme.onclick = () => applyTheme("fun");
+madTheme.onclick = () => applyTheme("mad");
+ferrariTheme.onclick = () => applyTheme("ferrari");
+mclarenTheme.onclick = () => applyTheme("mclaren");
+mercedesTheme.onclick = () => applyTheme("mercedes");
+redbullTheme.onclick = () => applyTheme("redbull");
+astonmartinTheme.onclick = () => applyTheme("astonmartin");
+themesBtn.onclick = () => setView("themes");
+
+applyTheme(currentTheme);
 accountBtn.onclick = () => setView("account");
 setView("general");
 
@@ -419,7 +630,6 @@ async function apiAuth(path) {
   return res.json().catch(() => ({ ok: false, error: "network" }));
 }
 
-//e2ee dm crypto
 function b64(bytes) {
   let s = "";
   const arr = new Uint8Array(bytes);
@@ -668,7 +878,8 @@ function wsConnect() {
     }
 
     if (m.type === "online") {
-      onlineStats.textContent = `Now: ${m.current} | Peak: ${m.peak}`;
+      const statusLabel = (currentTheme === "ferrari" || currentTheme === "mclaren") ? "On Track" : "Now";
+      onlineStats.textContent = `${statusLabel}: ${m.current} | Peak: ${m.peak}`;
       onlineList.textContent = "";
 
       for (const u of m.users) {
@@ -687,11 +898,83 @@ function wsConnect() {
     }
 
     if (m.type === "history") {
+      console.log("HISTORY MESSAGE RECEIVED - CLEARING FEED!");
+      console.trace();
       feed.textContent = "";
+      
+      const allMessages = [];
+      
       for (const item of m.messages) {
-        addBubbleMessage(item.text, item.userId, false, item.name, item.ts);
+        allMessages.push({
+          type: "chat",
+          text: item.text,
+          userId: item.userId,
+          name: item.name,
+          ts: item.ts
+        });
       }
-      displayCachedDms();
+      
+      const now = Date.now();
+      for (let i = dmCache.length - 1; i >= 0; i--) {
+        if (now - dmCache[i].timestamp > MESSAGE_EXPIRY_TIME) {
+          dmCache.splice(i, 1);
+        }
+      }
+      
+      for (const cachedMsg of dmCache) {
+        allMessages.push({
+          type: "dm",
+          text: cachedMsg.text,
+          userId: cachedMsg.fromId,
+          name: cachedMsg.displayName,
+          ts: cachedMsg.timestamp,
+          dmLabel: cachedMsg.label,
+          otherId: cachedMsg.otherId,
+          dmTime: cachedMsg.time
+        });
+      }
+      
+      allMessages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      
+      for (const item of allMessages) {
+        if (item.type === "chat") {
+          addBubbleMessage(item.text, item.userId, false, item.name, item.ts);
+        } else if (item.type === "dm") {
+          const isFromUser = item.userId === me?.id;
+          const div = document.createElement("div");
+          div.className = "msg";
+          div.textContent = item.text;
+          if (isFromUser) {
+            div.classList.add("isUser");
+          }
+
+          const headerContainer = document.createElement("div");
+          headerContainer.className = "messageHeader";
+          
+          const dmLabelEl = document.createElement("div");
+          dmLabelEl.className = "messageUsername dmLabel";
+          dmLabelEl.textContent = `${item.dmLabel} ${item.name} (#${item.otherId})${item.dmTime ? " - " + item.dmTime : ""}`;
+          headerContainer.appendChild(dmLabelEl);
+          
+          const container = document.createElement("div");
+          container.className = "messageGroupWrapper";
+          if (isFromUser) {
+            container.classList.add("isUserDM");
+          }
+          container.appendChild(headerContainer);
+          container.appendChild(div);
+          feed.appendChild(container);
+          trackMessageTimestamp(container, item.ts);
+        }
+      }
+      
+      try {
+        localStorage.setItem("dm_cache", JSON.stringify(dmCache));
+      } catch (e) {
+        console.error("Failed to save cleaned DM cache:", e);
+      }
+      
+      feed.scrollTop = feed.scrollHeight;
       return;
     }
 
@@ -833,6 +1116,32 @@ text.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendBtn.click();
 });
 
+function initDarkMode() {
+  const savedMode = localStorage.getItem("darkMode");
+  if (savedMode === "true") {
+    document.body.classList.add("dark-mode");
+  }
+}
+
+function setupModeToggle() {
+  const modeToggle = $("modeToggle");
+  if (!modeToggle) return;
+  
+  const updateIcon = () => {
+    modeToggle.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
+  };
+  
+  updateIcon();
+  
+  modeToggle.addEventListener("click", () => {
+    const isDark = document.body.classList.toggle("dark-mode");
+    localStorage.setItem("darkMode", isDark);
+    updateIcon();
+  });
+}
+
+initDarkMode();
+
 async function boot(keepFeed) {
   if (!token) {
     showAuth();
@@ -846,6 +1155,7 @@ async function boot(keepFeed) {
   }
 
   if (!keepFeed) feed.textContent = "";
+  setupModeToggle();
   wsConnect();
 }
 
