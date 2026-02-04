@@ -8,7 +8,7 @@
   </head>
   <body>
     <main class="wrap">
-      <h1>Chat</h1>
+      <h1><img id="ferrariLogo" src="ferrari-logo.png" alt="Ferrari" class="hidden" style="height: 1.6em; vertical-align: middle; margin-right: 14px; position: relative; top: -0.1em;"><img id="mclarenLogo" src="mclaren-logo.png" alt="McLaren" class="hidden" style="height: 1.6em; vertical-align: middle; margin-right: 14px; position: relative; top: -0.1em;"><img id="mercedesLogo" src="mercedes-logo.png" alt="Mercedes" class="hidden" style="height: 1.6em; vertical-align: middle; margin-right: 14px; position: relative; top: -0.1em;"><img id="redbullLogo" src="redbull-logo.svg" alt="Red Bull" class="hidden" style="height: 1.6em; vertical-align: middle; margin-right: 14px; position: relative; top: -0.1em;"><img id="astonmartinLogo" src="aston-martin-logo.png" alt="Aston Martin" class="hidden" style="height: 1.6em; vertical-align: middle; margin-right: 14px; position: relative; top: -0.1em;">Chat</h1>
 
       <section class="card" id="auth">
         <div class="authHeader">
@@ -75,13 +75,50 @@
 
               <div class="small" id="accountMsg"></div>
             </div>
+
+            <div id="themes" class="card2 hidden">
+              <div class="sideTitle">Themes</div>
+              <div class="small">Choose your preferred theme for light mode.</div>
+
+              <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                <div>
+                  <div class="themeCategory">Default</div>
+                  <button id="defaultTheme" class="themeBtn active">Default</button>
+                </div>
+                
+                <div>
+                  <div class="themeCategory">Basic Themes</div>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button id="funTheme" class="themeBtn">Fun</button>
+                    <button id="madTheme" class="themeBtn">Mad</button>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="themeCategory">F1 Themes</div>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button id="ferrariTheme" class="themeBtn">Scuderia Ferrari</button>
+                    <button id="mclarenTheme" class="themeBtn">McLaren</button>
+                    <button id="mercedesTheme" class="themeBtn">Mercedes AMG Petronas</button>
+                    <button id="redbullTheme" class="themeBtn">Red Bull Racing</button>
+                    <button id="astonmartinTheme" class="themeBtn">Aston Martin Aramco</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <aside class="side">
-            <div class="sideTitle">Online</div>
-            <div class="small" id="onlineStats"></div>
-            <div id="onlineList" class="list"></div>
-          </aside>
+          <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
+            <aside class="side" style="flex: 1;">
+              <div class="sideTitle">Online</div>
+              <div class="small" id="onlineStats"></div>
+              <div id="onlineList" class="list"></div>
+            </aside>
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <button id="modeToggle" style="flex: 1; min-height: 44px; font-size: 20px;">🌙</button>
+              <button id="themesBtn" style="flex: 1; min-height: 44px; font-size: 20px;">🎨</button>
+            </div>
+          </div>
         </div>
 
         <div class="small" id="hint"></div>
