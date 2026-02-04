@@ -1,30 +1,27 @@
-html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 18px; background-color: #ffffff; }
-body { display: flex; justify-content: center; align-items: center; }
-.wrap { width: min(1100px, 95vw); }
-h1 { text-align: center; margin: 0 0 14px 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Arial, sans-serif; font-weight: 600; letter-spacing: -0.5px; }
-
 @keyframes slideOutLeft {
-  from {
+  0% {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+    filter: blur(0px);
   }
-  to {
+  100% {
     opacity: 0;
-    transform: translateX(-100%);
+    transform: translateX(-30%) scale(0.95);
+    filter: blur(8px);
   }
 }
-
 @keyframes slideInRight {
-  from {
+  0% {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(30%) scale(0.95);
+    filter: blur(8px);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+    filter: blur(0px);
   }
 }
-
 @keyframes bubblePopIn {
   from {
     opacity: 0;
@@ -35,7 +32,6 @@ h1 { text-align: center; margin: 0 0 14px 0; font-family: -apple-system, BlinkMa
     transform: scale(1);
   }
 }
-
 @keyframes buttonPress {
   0% {
     transform: scale(1);
@@ -47,56 +43,407 @@ h1 { text-align: center; margin: 0 0 14px 0; font-family: -apple-system, BlinkMa
     transform: scale(1);
   }
 }
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
 
-.card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 20px; padding: 32px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04); }
-.card2 { border: 1px solid #ddd; padding: 12px; margin-top: 12px; border-radius: 12px; }
-.hidden { display: none !important; }
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, sans-serif;
+  font-size: 18px;
+  background: #ffffff;
+  transition: background 0.5s ease;
+}
 
-.row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
-input { font-size: 18px; padding: 12px 14px; flex: 1; min-width: 220px; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 12px; background-color: rgba(255, 255, 255, 0.8); font-family: inherit; }
-input:focus { outline: none; border-color: rgba(0, 0, 0, 0.12); background-color: rgba(255, 255, 255, 0.95); }
-button { font-size: 18px; padding: 11px 16px; cursor: pointer; border: 1.5px solid rgba(0, 0, 0, 0.15); border-radius: 10px; background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-weight: 500; transition: all 0.2s ease; color: #000; font-family: inherit; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
-button:hover { background: #000; border-color: #000; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-button:active { animation: buttonPress 0.2s ease; }
-button.active { background: #000; border-color: #000; color: #fff; }
+body.theme-fun {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
 
-.small { font-size: 14px; opacity: 0.8; margin-top: 8px; }
+body.theme-mad {
+  background: linear-gradient(135deg, #424242 0%, #616161 25%, #e53935 50%, #757575 75%, #9e9e9e 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
 
-.authHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.toggleBtn { width: auto; padding: 8px 12px; font-size: 14px; }
-.buttonRow { justify-content: center; gap: 12px; margin-top: 20px; }
+body.theme-ferrari {
+  background: linear-gradient(135deg, #a80000 0%, #c20000 20%, #a50000 35%, #ffffff 44%, #ffffff 50%, #ffffff 56%, #a80000 65%, #b50000 72%, #0066b3 82%, #0052a3 88%, #0066b3 94%, #c20000 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
 
-.top { margin-bottom: 16px; }
+body.theme-mclaren {
+  background: linear-gradient(135deg, #F98E1D 0%, #FF9800 20%, #F98E1D 35%, #ffffff 50%, #F98E1D 65%, #FF9800 80%, #F98E1D 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
 
-.feed { border: 1px solid #ddd; height: 52vh; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; background-color: #f5f5f5; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-.feed.slideOut { animation: slideOutLeft 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
-.feed.slideIn { animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-.layout { display: grid; grid-template-columns: 1fr 320px; gap: 12px; }
+body.theme-mclaren .msg.isUser {
+  background: linear-gradient(135deg, #D97706 0%, #EA580C 100%);
+}
 
-.side { border: 1px solid #ddd; padding: 10px; height: 52vh; overflow-y: auto; }
-.sideTitle { font-weight: bold; margin-bottom: 8px; }
+body.theme-mercedes {
+  background: linear-gradient(135deg, #00A19B 0%, #00BFB8 20%, #00A19B 35%, #ffffff 50%, #00A19B 65%, #00BFB8 80%, #00A19B 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
 
-.list { display: flex; flex-direction: column; gap: 8px; }
-.itemBtn { text-align: left; padding: 8px; font-size: 16px; }
+body.theme-mercedes .msg.isUser {
+  background: linear-gradient(135deg, #008C88 0%, #00A19B 100%);
+}
 
-.msg { 
-  padding: 10px 14px; 
-  border-radius: 18px; 
-  word-wrap: break-word; 
+body.theme-redbull {
+  background: linear-gradient(135deg, #5B7FFF 0%, #6B8FFF 15%, #5B7FFF 25%, #FF4444 35%, #FF5555 42%, #FF4444 50%, #FFE44D 58%, #FFED66 65%, #FFE44D 75%, #5B7FFF 85%, #6B8FFF 92%, #5B7FFF 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+body.theme-redbull .msg.isUser {
+  background: linear-gradient(135deg, #001F54 0%, #003380 100%);
+}
+
+body.theme-astonmartin {
+  background: linear-gradient(135deg, #006847 0%, #00875F 20%, #006847 35%, #ffffff 50%, #006847 65%, #00875F 80%, #006847 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+body.theme-astonmartin .msg.isUser {
+  background: linear-gradient(135deg, #004B34 0%, #006847 100%);
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wrap {
+  width: min(1100px, 95vw);
+}
+
+h1 {
+  text-align: center;
+  margin: 0 0 14px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.layout .hidden {
+  display: block !important;
+  opacity: 0 !important;
+  transform: scale(0.95) !important;
+  pointer-events: none !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.small {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-top: 8px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(80px) saturate(200%);
+  -webkit-backdrop-filter: blur(80px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.08),
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    0 10px 30px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
+  border-radius: 32px;
+  padding: 36px;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card2 {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+  margin-top: 16px;
+  border-radius: 20px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+input {
+  font-size: 18px;
+  padding: 16px 20px;
+  flex: 1;
+  min-width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  font-family: inherit;
+  color: #333;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 4px 16px rgba(0, 0, 0, 0.08),
+    0 0 0 0.5px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 4px rgba(255, 255, 255, 0.25),
+    0 0 20px rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+button {
+  font-size: 18px;
+  padding: 14px 22px;
+  cursor: pointer;
+  border-radius: 18px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: rgba(0, 0, 0, 0.8);
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.1),
+    0 4px 10px rgba(0, 0, 0, 0.06),
+    0 0 0 0.5px rgba(255, 255, 255, 0.3);
+}
+button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.08),
+    0 12px 35px rgba(0, 0, 0, 0.15),
+    0 6px 15px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 0 30px rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+button:active {
+  animation: buttonPress 0.2s ease;
+  transform: translateY(0);
+}
+button.active {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.95),
+    inset 0 2px 10px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    0 0 0 0.5px rgba(255, 255, 255, 0.4);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.authHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.toggleBtn {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.buttonRow {
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.themeBtn {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 17px;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.themeBtn.active {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 2px 10px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.themeCategory {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+
+.top {
+  margin-bottom: 24px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 12px;
+  margin-top: 20px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.layout > div:last-child {
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.layout > div:last-child.hidden {
+  opacity: 0;
+  transform: translateX(20px) scale(0.95);
+  pointer-events: none;
+}
+
+.feed {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  height: 52vh;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(80px) saturate(200%);
+  -webkit-backdrop-filter: blur(80px) saturate(200%);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+    0 10px 35px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(255, 255, 255, 0.25);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 24px;
+}
+.feed.slideOut {
+  animation: slideOutLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.feed.slideIn {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.side {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  padding: 16px;
+  height: 52vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(80px) saturate(200%);
+  -webkit-backdrop-filter: blur(80px) saturate(200%);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+    0 10px 35px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(255, 255, 255, 0.25);
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sideTitle {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itemBtn {
+  text-align: left;
+  padding: 8px;
+  font-size: 16px;
+}
+
+.msg {
+  padding: 13px 18px;
+  border-radius: 24px;
+  word-wrap: break-word;
   display: inline-block;
   width: fit-content;
   max-width: 75%;
-  background-color: #E5E5EA;
-  color: #000;
-  border: none;
-  border-bottom: none;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 0 0 0.5px rgba(255, 255, 255, 0.3);
+  color: #000000;
   font-size: 16px;
   animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .msg.isSystem {
   background-color: transparent;
-  color: #999;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  color: rgba(0, 0, 0, 0.5);
   font-size: 12px;
   padding: 4px 0;
   display: block;
@@ -105,13 +452,32 @@ button.active { background: #000; border-color: #000; color: #fff; }
   border-radius: 0;
   max-width: none;
 }
-
 .msg.isUser {
-  background-color: #007AFF;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.85) 0%, rgba(50, 150, 255, 0.85) 100%);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(0, 122, 255, 0.35),
+    0 4px 12px rgba(0, 122, 255, 0.25),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(0, 122, 255, 0.15);
   color: white;
   margin-left: auto;
   margin-right: 0;
   display: block;
+}
+
+.messageGroupWrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  min-height: fit-content;
+  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.messageGroupWrapper.isUserDM {
+  align-items: flex-end;
 }
 
 .messageUsername {
@@ -121,10 +487,8 @@ button.active { background: #000; border-color: #000; color: #fff; }
   margin-bottom: 4px;
   padding: 0 2px;
 }
-
 .messageUsername.dmLabel {
   font-weight: 700;
-  color: #333;
 }
 
 .messageHeader {
@@ -132,7 +496,7 @@ button.active { background: #000; border-color: #000; color: #fff; }
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2px;
-  padding: 0 0;
+  padding: 0;
 }
 
 .messageTime {
@@ -157,33 +521,35 @@ button.active { background: #000; border-color: #000; color: #fff; }
   align-items: flex-end;
   gap: 2px;
 }
-
 .userBubbleWithTime .msg {
   margin-bottom: 0;
 }
 
-.messageGroupWrapper {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 12px;
-  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+.nameLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.messageGroupWrapper.isUserDM {
-  align-items: flex-end;
+.flag {
+  width: 18px;
+  height: 12px;
+  image-rendering: auto;
+  border: 1px solid rgba(0, 0, 0, 0.1333333333);
 }
 
-.msg.isUser ~ .messageUsername {
-  display: none;
+.roleTag {
+  font-weight: bold;
 }
-
-.nameLine { display: inline-flex; align-items: center; gap: 8px; }
-.flag { width: 18px; height: 12px; image-rendering: auto; border: 1px solid #00000022; }
-
-.roleTag { font-weight: bold; }
-.role-owner { color: #ff6a00; }
-.role-moderator { color: #7a5cff; }
-.role-enthusiast { color: #1e9b3b; }
+.roleTag.role-owner {
+  color: #ff6a00;
+}
+.roleTag.role-moderator {
+  color: #7a5cff;
+}
+.roleTag.role-enthusiast {
+  color: #1e9b3b;
+}
 
 #me .nameLine {
   display: flex;
@@ -191,17 +557,14 @@ button.active { background: #000; border-color: #000; color: #fff; }
   gap: 8px;
   width: 100%;
 }
-
 #me .nameLine img {
   order: 1;
 }
-
 #me .nameLine span:nth-child(2) {
   order: 2;
   font-weight: 500;
   flex: 1;
 }
-
 #me .nameLine span:nth-child(3) {
   order: 4;
   font-weight: 600;
@@ -253,7 +616,6 @@ button.active { background: #000; border-color: #000; color: #fff; }
   font-size: 12px;
   color: white;
 }
-
 .userListRoleBadge.role-owner {
   background-color: #ff6a00;
 }
@@ -263,8 +625,717 @@ button.active { background: #000; border-color: #000; color: #fff; }
 .userListRoleBadge.role-enthusiast {
   background-color: #1e9b3b;
 }
+
 .userRow {
-  border-top: 1px solid #00000022;
+  border-top: 1px solid rgba(0, 0, 0, 0.1333333333);
   padding: 8px 0;
 }
-.userRow .row { flex-wrap: wrap; gap: 6px; }
+.userRow .row {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+ Default theme dark mode - simple gray like Discord */
+body.dark-mode:not(.theme-fun):not(.theme-mad):not(.theme-ferrari):not(.theme-mclaren):not(.theme-mercedes):not(.theme-redbull):not(.theme-astonmartin) {
+  background: #2f3136;
+  color: #dcddde;
+}
+body.dark-mode:not(.theme-fun):not(.theme-mad):not(.theme-ferrari):not(.theme-mclaren):not(.theme-mercedes):not(.theme-redbull):not(.theme-astonmartin) .wrap,
+body.dark-mode:not(.theme-fun):not(.theme-mad):not(.theme-ferrari):not(.theme-mclaren):not(.theme-mercedes):not(.theme-redbull):not(.theme-astonmartin) body {
+  background: transparent;
+}
+body.dark-mode:not(.theme-fun):not(.theme-mad):not(.theme-ferrari):not(.theme-mclaren):not(.theme-mercedes):not(.theme-redbull):not(.theme-astonmartin) .card#app {
+  background: rgba(40, 40, 45, 0.5);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+body.dark-mode:not(.theme-fun):not(.theme-mad):not(.theme-ferrari):not(.theme-mclaren):not(.theme-mercedes):not(.theme-redbull):not(.theme-astonmartin) .feed,
+body.dark-mode:not(.theme-fun):not(.theme-mad):not(.theme-ferrari):not(.theme-mclaren):not(.theme-mercedes):not(.theme-redbull):not(.theme-astonmartin) .side {
+  background: rgba(47, 49, 54, 0.6);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+ Fun theme dark mode - purple gradient */
+body.dark-mode.theme-fun {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 25%, #24243e 50%, #0f0c29 75%, #1a1a2e 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-fun .wrap,
+body.dark-mode.theme-fun body {
+  background: transparent;
+}
+body.dark-mode.theme-fun .card#app {
+  background: rgba(15, 15, 25, 0.2);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(147, 112, 219, 0.3);
+  box-shadow: 
+    0 0 100px rgba(147, 112, 219, 0.3),
+    0 0 60px rgba(138, 43, 226, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-fun .feed,
+body.dark-mode.theme-fun .side {
+  background: rgba(20, 20, 35, 0.25);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(147, 112, 219, 0.2);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(147, 112, 219, 0.1);
+}
+
+body.dark-mode.theme-mad {
+  background: linear-gradient(135deg, #1a0000 0%, #4a0000 25%, #2d0000 50%, #1a0000 75%, #330000 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-mad .wrap,
+body.dark-mode.theme-mad body {
+  background: transparent;
+}
+body.dark-mode.theme-mad .card#app {
+  background: rgba(25, 10, 10, 0.2);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(220, 50, 50, 0.3);
+  box-shadow: 
+    0 0 100px rgba(220, 50, 50, 0.3),
+    0 0 60px rgba(200, 20, 20, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-mad .feed,
+body.dark-mode.theme-mad .side {
+  background: rgba(35, 15, 15, 0.25);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(220, 50, 50, 0.2);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(220, 50, 50, 0.1);
+}
+
+ Scuderia Ferrari dark mode - blood red with white and blue shadows */
+body.dark-mode.theme-ferrari {
+  background: linear-gradient(135deg, #5a0000 0%, #6e0000 20%, #5a0000 40%, #003d82 70%, #0052a3 80%, #003d82 90%, #5a0000 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-ferrari .msg.isUser {
+  background: linear-gradient(135deg, #001f3f 0%, #003d82 100%);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(255, 255, 255, 0.15),
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.08);
+}
+
+ McLaren dark mode - papaya and black */
+body.dark-mode.theme-mclaren {
+  background: linear-gradient(135deg, #D97706 0%, #EA580C 20%, #D97706 35%, #0a0a0a 50%, #D97706 65%, #EA580C 80%, #D97706 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-mclaren .msg.isUser {
+  background: linear-gradient(135deg, #2d2d2d 0%, #3a3a3a 100%);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(255, 255, 255, 0.15),
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.08);
+}
+body.dark-mode.theme-mclaren .wrap,
+body.dark-mode.theme-mclaren body {
+  background: transparent;
+}
+body.dark-mode.theme-mclaren .card#app {
+  background: rgba(30, 20, 10, 0.4);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 0 100px rgba(255, 255, 255, 0.15),
+    0 0 60px rgba(255, 255, 255, 0.12),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-mclaren .feed,
+body.dark-mode.theme-mclaren .side {
+  background: rgba(30, 20, 10, 0.45);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.08),
+    0 0 60px rgba(255, 255, 255, 0.06);
+}
+
+body.dark-mode.theme-ferrari button:not(#modeToggle) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode.theme-ferrari button:not(#modeToggle):hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.1) !important;
+}
+body.dark-mode.theme-ferrari button:not(#modeToggle).active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode.theme-ferrari #modeToggle {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.12) !important;
+}
+body.dark-mode.theme-ferrari #modeToggle:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-mode.theme-mclaren button:not(#modeToggle) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode.theme-mclaren button:not(#modeToggle):hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.1) !important;
+}
+body.dark-mode.theme-mclaren button:not(#modeToggle).active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode.theme-mclaren #modeToggle {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.12) !important;
+}
+body.dark-mode.theme-mclaren #modeToggle:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-mode.theme-mercedes {
+  background: linear-gradient(135deg, #008C88 0%, #00BFB8 15%, #008C88 25%, #00A19B 40%, #001a19 50%, #00A19B 60%, #008C88 75%, #00BFB8 85%, #008C88 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-mercedes .msg.isUser {
+  background: linear-gradient(135deg, #2d2d2d 0%, #3a3a3a 100%);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(255, 255, 255, 0.15),
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.08);
+}
+body.dark-mode.theme-mercedes .wrap,
+body.dark-mode.theme-mercedes body {
+  background: transparent;
+}
+body.dark-mode.theme-mercedes .card#app {
+  background: rgba(30, 20, 10, 0.4);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 0 100px rgba(255, 255, 255, 0.15),
+    0 0 60px rgba(255, 255, 255, 0.12),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-mercedes .feed,
+body.dark-mode.theme-mercedes .side {
+  background: rgba(30, 20, 10, 0.45);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.08),
+    0 0 60px rgba(255, 255, 255, 0.06);
+}
+
+body.dark-mode.theme-mercedes button:not(#modeToggle) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode.theme-mercedes button:not(#modeToggle):hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.1) !important;
+}
+body.dark-mode.theme-mercedes button:not(#modeToggle).active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode.theme-mercedes #modeToggle {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.12) !important;
+}
+body.dark-mode.theme-mercedes #modeToggle:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-mode.theme-redbull {
+  background: linear-gradient(135deg, #001F54 0%, #002A6E 15%, #001F54 25%, #660000 35%, #8B0000 42%, #660000 50%, #997A00 58%, #B8860B 65%, #997A00 75%, #001F54 85%, #002A6E 92%, #001F54 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-redbull .msg.isUser {
+  background: linear-gradient(135deg, #2d2d2d 0%, #3a3a3a 100%);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(255, 255, 255, 0.15),
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.08);
+}
+body.dark-mode.theme-redbull .wrap,
+body.dark-mode.theme-redbull body {
+  background: transparent;
+}
+body.dark-mode.theme-redbull .card#app {
+  background: rgba(30, 20, 10, 0.4);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 0 100px rgba(255, 255, 255, 0.15),
+    0 0 60px rgba(255, 255, 255, 0.12),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-redbull .feed,
+body.dark-mode.theme-redbull .side {
+  background: rgba(30, 20, 10, 0.45);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.08),
+    0 0 60px rgba(255, 255, 255, 0.06);
+}
+
+body.dark-mode.theme-redbull button:not(#modeToggle) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode.theme-redbull button:not(#modeToggle):hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.1) !important;
+}
+body.dark-mode.theme-redbull button:not(#modeToggle).active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode.theme-redbull #modeToggle {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(255, 255, 255, 0.12) !important;
+}
+body.dark-mode.theme-redbull #modeToggle:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-mode.theme-astonmartin {
+  background: linear-gradient(135deg, #004225 0%, #005A38 15%, #004225 25%, #00301A 40%, #000000 50%, #00301A 60%, #004225 75%, #005A38 85%, #004225 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  color: #ffffff;
+}
+body.dark-mode.theme-astonmartin .msg.isUser {
+  background: linear-gradient(135deg, #003318 0%, #004225 100%);
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    0 8px 24px rgba(0, 102, 71, 0.35),
+    0 4px 12px rgba(0, 102, 71, 0.25),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(0, 102, 71, 0.15);
+}
+body.dark-mode.theme-astonmartin .wrap,
+body.dark-mode.theme-astonmartin body {
+  background: transparent;
+}
+body.dark-mode.theme-astonmartin .card#app {
+  background: rgba(0, 48, 26, 0.4);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(0, 102, 71, 0.3);
+  box-shadow: 
+    0 0 100px rgba(0, 102, 71, 0.3),
+    0 0 60px rgba(0, 102, 71, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-astonmartin .feed,
+body.dark-mode.theme-astonmartin .side {
+  background: rgba(0, 48, 26, 0.45);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(0, 102, 71, 0.25);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(0, 102, 71, 0.15),
+    0 0 60px rgba(0, 102, 71, 0.1);
+}
+
+body.dark-mode.theme-astonmartin button:not(#modeToggle) {
+  background: rgba(0, 102, 71, 0.15) !important;
+  border: 1.5px solid rgba(0, 102, 71, 0.3) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode.theme-astonmartin button:not(#modeToggle):hover {
+  background: rgba(0, 102, 71, 0.25) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(0, 102, 71, 0.2) !important;
+}
+body.dark-mode.theme-astonmartin button:not(#modeToggle).active {
+  background: rgba(0, 102, 71, 0.35) !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode.theme-astonmartin #modeToggle {
+  background: rgba(0, 102, 71, 0.2) !important;
+  border: 1.5px solid rgba(0, 102, 71, 0.4) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(0, 102, 71, 0.25) !important;
+}
+body.dark-mode.theme-astonmartin #modeToggle:hover {
+  background: rgba(0, 102, 71, 0.3) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(0, 102, 71, 0.3) !important;
+}
+body.dark-mode.theme-ferrari .wrap,
+body.dark-mode.theme-ferrari body {
+  background: transparent;
+}
+body.dark-mode.theme-ferrari .card#app {
+  background: rgba(90, 0, 0, 0.4);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 0 100px rgba(255, 255, 255, 0.15),
+    0 0 60px rgba(255, 255, 255, 0.12),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode.theme-ferrari .feed,
+body.dark-mode.theme-ferrari .side {
+  background: rgba(90, 0, 0, 0.45);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.08),
+    0 0 60px rgba(255, 255, 255, 0.06);
+}
+
+ Common dark mode text colors */
+body.dark-mode .name,
+body.dark-mode .title,
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+  color: #ffffff;
+}
+body.dark-mode .info,
+body.dark-mode .timestamp,
+body.dark-mode .subtext {
+  color: #b0b0b0;
+}
+body.dark-mode .muted {
+  color: #808080;
+}
+body.dark-mode .border-top,
+body.dark-mode .border-bottom {
+  border-color: #333333;
+}
+body.dark-mode hr {
+  border-color: #333333;
+}
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  color: #ffffff;
+  border: 1.5px solid rgba(147, 112, 219, 0.3);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(147, 112, 219, 0.1);
+}
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder,
+body.dark-mode select::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+body.dark-mode button {
+  background: rgba(147, 112, 219, 0.2);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1.5px solid rgba(147, 112, 219, 0.4);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(147, 112, 219, 0.2);
+  color: #ffffff;
+}
+body.dark-mode button:hover {
+  background: rgba(147, 112, 219, 0.35);
+  border-color: rgba(147, 112, 219, 0.6);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(147, 112, 219, 0.4),
+    0 0 60px rgba(138, 43, 226, 0.2);
+  transform: translateY(-2px);
+}
+body.dark-mode button.active {
+  background: rgba(147, 112, 219, 0.25);
+  border-color: rgba(147, 112, 219, 0.5);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 2px 8px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+body.dark-mode .msg {
+  background: rgba(147, 112, 219, 0.15);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(147, 112, 219, 0.3);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(147, 112, 219, 0.1);
+  color: #ffffff;
+}
+body.dark-mode .msg.isSystem {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+  text-align: center;
+  width: 100%;
+  max-width: none;
+  padding: 4px 0;
+  font-size: 12px;
+  border-radius: 0;
+}
+body.dark-mode .msg.in {
+  background: rgba(147, 112, 219, 0.15);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(147, 112, 219, 0.3);
+  color: #ffffff;
+  padding: 12px 16px;
+  display: inline-block;
+  width: fit-content;
+  max-width: 75%;
+  border-radius: 22px;
+}
+body.dark-mode .msg.out, body.dark-mode .msg.isUser {
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.8) 0%, rgba(147, 112, 219, 0.8) 100%);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(147, 112, 219, 0.5);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 8px 20px rgba(138, 43, 226, 0.4),
+    0 4px 10px rgba(138, 43, 226, 0.3),
+    0 0 30px rgba(147, 112, 219, 0.2);
+  color: white;
+}
+body.dark-mode .msg .timestamp {
+  color: #808080;
+}
+body.dark-mode button:not(#modeToggle) {
+  background: rgba(147, 112, 219, 0.15) !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(147, 112, 219, 0.3) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode button:not(#modeToggle):hover {
+  background: rgba(147, 112, 219, 0.25) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(147, 112, 219, 0.2) !important;
+}
+body.dark-mode button:not(#modeToggle).active {
+  background: rgba(147, 112, 219, 0.3) !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+body.dark-mode .nameLine,
+body.dark-mode .name {
+  color: #ffffff;
+}
+body.dark-mode .roleBadge {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+body.dark-mode .userItem {
+  border-top: 1px solid #333333;
+  color: #ffffff;
+}
+body.dark-mode .userItem:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+body.dark-mode .userItem.active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+body.dark-mode .viewContainer {
+  background-color: transparent;
+  color: #ffffff;
+}
+body.dark-mode .accountContent {
+  color: #ffffff;
+}
+body.dark-mode .accountContent label {
+  color: #b0b0b0;
+}
+body.dark-mode #modeToggle {
+  background: linear-gradient(135deg, rgba(147, 112, 219, 0.3) 0%, rgba(138, 43, 226, 0.3) 100%);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1.5px solid rgba(147, 112, 219, 0.5);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 0 40px rgba(147, 112, 219, 0.3),
+    0 0 60px rgba(138, 43, 226, 0.2);
+}
+body.dark-mode #modeToggle:hover {
+  background: linear-gradient(135deg, rgba(147, 112, 219, 0.4) 0%, rgba(138, 43, 226, 0.4) 100%);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 50px rgba(147, 112, 219, 0.4),
+    0 0 80px rgba(138, 43, 226, 0.3);
+}
+
+# sourceMappingURL=styles.css.map */
